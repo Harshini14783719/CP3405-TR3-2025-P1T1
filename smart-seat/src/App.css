@@ -1,88 +1,76 @@
 .app-container {
   width: 100%;
+  min-height: 100vh;
 }
 
 .navbar {
   display: flex;
-  justify-content: center;
   align-items: center;
-  padding: 0 5%;
+  justify-content: space-between;
+  padding: 0 2.5rem;
   height: 80px;
   background-color: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  position: relative;
-}
-
-.navbar-left {
-  position: absolute;
-  left: 5%;
-  display: flex;
-  align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.8rem;
 }
 
 .logo-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
   background-color: #1e40af;
-  color: white;
+  color: #ffffff;
+  border-radius: 6px;
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
 }
 
 .logo-text {
-  font-size: 1.35rem;
-  font-weight: 600;
   color: #0f172a;
+  font-weight: 700;
+  font-size: 1.25rem;
 }
 
 .nav-links {
   display: flex;
-  align-items: center;
-  gap: 3.5rem;
+  gap: 2.5rem;
 }
 
 .nav-item {
   position: relative;
-  color: #334155;
+  color: #64748b;
   text-decoration: none;
-  font-size: 1.1rem;
   font-weight: 600;
-  padding: 0.8rem 0;
-  transition: color 0.3s ease;
-  letter-spacing: 0.02em;
-}
-
-.nav-item:hover {
-  color: #1e40af;
+  font-size: 1rem;
+  padding: 0.5rem 0;
+  transition: color 0.2s ease;
 }
 
 .nav-item.active {
   color: #1e40af;
-  font-weight: 700;
 }
 
 .underline-indicator {
   position: absolute;
   bottom: 0;
   left: 0;
-  height: 3px;
-  background-color: #1e40af;
-  border-radius: 3px;
   width: 0;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 2px;
+  background-color: #1e40af;
+  transition: width 0.2s ease;
 }
 
-.nav-item:hover .underline-indicator,
 .nav-item.active .underline-indicator {
   width: 100%;
+}
+
+.nav-item:hover {
+  color: #1e40af;
 }

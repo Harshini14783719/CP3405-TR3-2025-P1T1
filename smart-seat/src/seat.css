@@ -1,0 +1,126 @@
+.seat-container {
+  display: flex;
+  min-height: calc(100vh - 80px);
+  width: 100%;
+}
+
+.seat-sidebar {
+  width: 28%;
+  background-color: #ffffff;
+  padding: 2.5rem;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.seat-main {
+  width: 72%;
+  padding: 2.5rem;
+  background-color: #f8fafc;
+}
+
+.seat-sidebar h2 {
+  color: #0f172a;
+  margin-bottom: 2rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.form-group {
+  margin-bottom: 1.8rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.7rem;
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #1e293b;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #1e40af;
+  box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.1);
+}
+
+.form-control:disabled {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.selection-summary {
+  margin-top: 2.5rem;
+  padding-top: 1.8rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.selection-summary h3 {
+  margin-bottom: 1.2rem;
+  color: #0f172a;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.selection-summary p {
+  margin-bottom: 0.6rem;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.seat-content h1 {
+  color: #0f172a;
+  margin-bottom: 2.2rem;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(100% - 5rem);
+  min-height: 500px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  color: #64748b;
+  font-size: 1.1rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.location-view h2 {
+  color: #1e40af;
+  margin-bottom: 1.8rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.seat-map {
+  background-color: #ffffff;
+  border-radius: 8px;
+  min-height: 500px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder-content {
+  color: #64748b;
+  text-align: center;
+  font-size: 1.05rem;
+  max-width: 60%;
+}
