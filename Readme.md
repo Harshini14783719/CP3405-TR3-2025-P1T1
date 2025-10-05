@@ -9,15 +9,15 @@ Harshini Raghuram
 #### SCRUM Master
 Yutong Ji
 #### Design IC
-hanzhi.zhang    Yutong Ji
+hanzhi zhang, Yutong Ji
 #### Engineer IC
-Jiaqi Shi    Sin Nather Paing   hanzhi.zhang   Yutong Ji
+Jiaqi Shi, Sin Nather Paing, hanzhi zhang, Yutong Ji
 #### Researcher
 Nang Laung Phoung
 #### Data Scientist
-hanzhi.zhang    Jiaqi Shi
+hanzhi zhang, Jiaqi Shi
 #### Product Marketing Manager
-Harshini Raghuram    Nang Laung Phoung
+Harshini Raghuram, Nang Laung Phoung
 #### UX writer
 Sin Nather Paing
 
@@ -33,3 +33,4 @@ Express
 
 #### Database
 Mysql
+
