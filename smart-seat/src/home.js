@@ -4,8 +4,8 @@ const Home = () => {
       <style>
         {`
           .home-container {
-          padding: 2.5rem;
-          min-height: calc(100vh - 80px);
+  width: 100%;
+  min-height: 100vh;
           }
 
           .home-title {

@@ -1,6 +1,6 @@
 const Mine = () => {
   return (
-    <div style={{ padding: '2.5rem', minHeight: 'calc(100vh - 80px)' }}>
+    <div style={{  'width': '100%', 'min-height': '100vh', }}>
       <h1>My Reservations</h1>
       <div style={{ 
         marginTop: '2rem', 
