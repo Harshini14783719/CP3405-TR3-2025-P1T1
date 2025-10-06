@@ -114,7 +114,7 @@ function App() {
         <nav style={styles.navbar}>
           <div style={styles.navbarLeft}>
             <div style={styles.logo}>
-              <span style={styles.logoIcon}>SS</span>
+              <span style={{ 'font-size': '1.8rem'}}>🪑</span>
               <span style={styles.logoText}>Smart Seat</span>
             </div>
           </div>
