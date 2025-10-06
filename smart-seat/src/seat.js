@@ -8,6 +8,17 @@ const Seat = () => {
   const [classroomRoom, setClassroomRoom] = useState('');
   const [selectedSeats, setSelectedSeats] = useState([]);
 
+  const [scrollY, setScrollY] = useState(0);
+
+useEffect(() => {
+  const handleScroll = () => {
+    setScrollY(window.scrollY);
+  };
+  
+  window.addEventListener('scroll', handleScroll);
+  return () => window.removeEventListener('scroll', handleScroll);
+}, []);
+
   useEffect(() => {
     if (classroomBuilding === 'E') {
       setClassroomFloor('2');
@@ -448,6 +459,21 @@ const Seat = () => {
   display: flex;
   width: 100%;
   min-height: 100vh;
+  margin-top: 45px;
+}
+
+.seat-notification {
+  position: fixed;
+  top: 80px;
+  left: 0;
+  right: 0;
+  background-color: #e0f2fe;
+  color: #0284c7;
+  padding: 0.75rem 2.5rem;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 101;
+  transition: top 0.04s ease;
 }
 
 .seat-sidebar {
@@ -786,6 +812,13 @@ const Seat = () => {
 }
         `}
       </style>
+
+    {selectedSeats.length > 0 && (
+  <div className="seat-notification" style={{ top: scrollY >= 80 ? 0 : '80px' }}>
+    <p>You have selected {selectedSeats.length} seat(s). Please confirm your reservation.</p>
+  </div>
+)}
+
     <div className="seat-container">
       <div className="seat-sidebar">
         <h2>Select Location</h2>
