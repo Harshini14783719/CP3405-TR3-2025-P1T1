@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import Home from './home';
 import Seat from './seat';
@@ -19,6 +19,20 @@ function App() {
   const profileRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const PrivateRoute = ({ element }) => {
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  return isLoggedIn ? element : <Navigate to="/signin" replace />;
+};
+
+  useEffect(() => {
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    console.log('登录状态:', isLoggedIn);
+  const currentUser = localStorage.getItem('currentUser');
+  if (isLoggedIn && currentUser) {
+    setUserInfo(JSON.parse(currentUser));
+  }
+}, []);
 
   useEffect(() => {
     const path = location.pathname === '/' ? 'home' : location.pathname.replace('/home', '');
@@ -341,15 +355,15 @@ function App() {
         </nav>
       )}
       
-      <Routes>
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
-<Route path="/" element={<Home />} />
-<Route path="/seat" element={<Seat />} />
-<Route path="/seat/records" element={<div>Booking Records</div>} />
-<Route path="/mine" element={<Mine />} />
-
-      </Routes>
+ <Routes>
+  <Route path="/signin" element={<SignIn />} />
+  <Route path="/signup" element={<SignUp />} />
+  <Route path="/" element={<PrivateRoute element={<Home />} />} />
+  <Route path="/seat" element={<PrivateRoute element={<Seat />} />} />
+  <Route path="/seat/records" element={<PrivateRoute element={<div>Booking Records</div>} />} />
+  <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
+  <Route path="*" element={<Navigate to="/" replace />} />
+</Routes>
     </div>
   );
 }
