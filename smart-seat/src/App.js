@@ -1,36 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import Home from './home';
 import Seat from './seat';
 import Mine from './mine';
 import SignIn from './signin';
 import SignUp from './signup';
-import PrivateRoute from './privateRoute';
+
+axios.defaults.baseURL = 'http://localhost:5000/api';
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [hoveredTab, setHoveredTab] = useState('');
   const [seatMenuOpen, setSeatMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
   const seatRef = useRef(null);
   const profileRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const path = location.pathname === '/' ? 'home' : location.pathname.replace('/', '');
+    const path = location.pathname === '/' ? 'home' : location.pathname.replace('/home', '');
     if (['home', 'seat', 'mine'].includes(path)) {
       setActiveTab(path);
     }
   }, [location.pathname]);
-
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    const isAuthPage = ['/signin', '/signup'].includes(location.pathname);
-    if (!isLoggedIn && !isAuthPage) {
-      navigate('/signin', { replace: true });
-    }
-  }, [location.pathname, navigate]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -48,10 +43,17 @@ function App() {
     };
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('savedEmail');
-    navigate('/signin', { replace: true });
+  const handleLogout = async () => {
+    try {
+      await axios.post('/auth/logout');
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('savedEmail');
+      setUserInfo(null);
+      navigate('/signin', { replace: true });
+    }
   };
 
   const handleEditProfile = () => {
@@ -240,11 +242,11 @@ function App() {
                 setSeatMenuOpen(true);
                 setHoveredTab('seat');
               }}
-                onMouseLeave={() => {
+              onMouseLeave={() => {
                 setSeatMenuOpen(false);
                 setHoveredTab('');
               }}
-                        >
+            >
               <div 
                 style={{ ...styles.navItem, ...(activeTab === 'seat' ? styles.activeNavItem : {}) }}
                 onClick={(e) => {
@@ -310,7 +312,7 @@ function App() {
             onMouseLeave={() => setProfileMenuOpen(false)}
           >
             <div style={styles.profileImage}>
-              {localStorage.getItem('savedEmail')?.charAt(0).toUpperCase() || 'U'}
+              {userInfo?.email?.charAt(0).toUpperCase() || localStorage.getItem('savedEmail')?.charAt(0).toUpperCase() || 'U'}
             </div>
             
             {profileMenuOpen && (
@@ -342,38 +344,11 @@ function App() {
       <Routes>
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route 
-          path="/" 
-          element={
-            <PrivateRoute>
-              <Home />
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/seat" 
-          element={
-            <PrivateRoute>
-              <Seat />
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/seat/records" 
-          element={
-            <PrivateRoute>
-              <div>Booking Records</div>
-            </PrivateRoute>
-          } 
-        />
-        <Route 
-          path="/mine" 
-          element={
-            <PrivateRoute>
-              <Mine />
-            </PrivateRoute>
-          } 
-        />
+<Route path="/" element={<Home />} />
+<Route path="/seat" element={<Seat />} />
+<Route path="/seat/records" element={<div>Booking Records</div>} />
+<Route path="/mine" element={<Mine />} />
+
       </Routes>
     </div>
   );

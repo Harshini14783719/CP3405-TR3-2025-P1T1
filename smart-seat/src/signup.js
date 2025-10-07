@@ -16,7 +16,7 @@ const SignUp = () => {
       [name]: type === 'checkbox' ? checked : (type === 'radio' ? value : value)
     }));
   };
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const { identity, email, password, confirmPassword, agreePolicy } = formData;
     if (!identity) {
@@ -35,9 +35,26 @@ const SignUp = () => {
       alert('Please agree to the Privacy Policy!');
       return;
     }
-    localStorage.setItem('userIdentity', identity);
-    alert('Registration successful! Please log in');
-    navigate('/signin', { replace: true });
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          role: identity 
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('Registration successful! Please log in');
+        navigate('/signin', { replace: true });
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert('Registration failed: Network error');
+    }
   };
   const styles = {
     signupContainer: {
@@ -281,6 +298,7 @@ const SignUp = () => {
               e.target.style.borderColor = '#D1D5DB';
               e.target.style.boxShadow = 'none';
             }}
+            autocomplete="new-password"
           />
         </div>
         
@@ -298,6 +316,7 @@ const SignUp = () => {
               e.target.style.borderColor = '#D1D5DB';
               e.target.style.boxShadow = 'none';
             }}
+            autocomplete="new-password"
           />
         </div>
         

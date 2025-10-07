@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 
 const Seat = () => {
   const [location, setLocation] = useState('');
@@ -7,17 +8,21 @@ const Seat = () => {
   const [classroomFloor, setClassroomFloor] = useState('');
   const [classroomRoom, setClassroomRoom] = useState('');
   const [selectedSeats, setSelectedSeats] = useState([]);
-
+  const [bookedSeats, setBookedSeats] = useState({});
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedHour, setSelectedHour] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [loading, setLoading] = useState(false);
   const [scrollY, setScrollY] = useState(0);
 
-useEffect(() => {
-  const handleScroll = () => {
-    setScrollY(window.scrollY);
-  };
-  
-  window.addEventListener('scroll', handleScroll);
-  return () => window.removeEventListener('scroll', handleScroll);
-}, []);
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     if (classroomBuilding === 'E') {
@@ -33,7 +38,8 @@ useEffect(() => {
 
   useEffect(() => {
     setSelectedSeats([]);
-  }, [location, classroomBuilding, classroomFloor, classroomRoom]);
+    setBookedSeats({});
+  }, [location, classroomBuilding, classroomFloor, classroomRoom, selectedDate, selectedHour]);
 
   const getAvailableFloors = () => {
     switch (classroomBuilding) {
@@ -61,12 +67,72 @@ useEffect(() => {
     return validRooms.map(room => `${classroomBuilding}${classroomFloor}-${room}`);
   };
 
-  const toggleSeat = (seatId) => {
+  const fetchBookedSeats = useCallback(async () => {
+    if (location !== 'classroom' || !classroomRoom || !selectedDate || !selectedHour) return;
+    
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/classrooms/getClassroomWithSeats', {
+        params: {
+          classroom: classroomRoom,
+          date: selectedDate,
+          hour: selectedHour
+        }
+      });
+      setBookedSeats(response.data.seats || {});
+    } catch (error) {
+      console.error('Error fetching booked seats:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [location, classroomRoom, selectedDate, selectedHour]);
+
+  useEffect(() => {
+    if (selectedHour) {
+      const end = parseInt(selectedHour) + 1;
+      setEndTime(end > 23 ? '00' : end.toString().padStart(2, '0'));
+    } else {
+      setEndTime('');
+    }
+  }, [selectedHour]);
+
+  useEffect(() => {
+    if (selectedDate && selectedHour && classroomRoom && location === 'classroom') {
+      fetchBookedSeats();
+    }
+  }, [selectedDate, selectedHour, classroomRoom, location, fetchBookedSeats]);
+
+  const toggleSeat = (seatNumber) => {
+    if (bookedSeats[seatNumber]) return;
+    
     setSelectedSeats(prev => 
-      prev.includes(seatId)
-        ? prev.filter(id => id !== seatId)
-        : [...prev, seatId]
+      prev.includes(seatNumber)
+        ? prev.filter(num => num !== seatNumber)
+        : [...prev, seatNumber]
     );
+  };
+
+  const handleBooking = async () => {
+    if (selectedSeats.length === 0 || !selectedDate || !selectedHour || !classroomRoom) return;
+
+    const startTime = `${selectedDate}T${selectedHour}:00`;
+    
+    try {
+      for (const seatNumber of selectedSeats) {
+        await axios.post('/api/bookings', {
+          userId: 1,
+          classroom: classroomRoom,
+          seatNumber,
+          startTime
+        });
+      }
+      alert('Booking successful!');
+      setSelectedSeats([]);
+      fetchBookedSeats();
+    } catch (error) {
+      console.error('Booking error:', error);
+      alert('Booking failed: ' + (error.response?.data?.message || 'Unknown error'));
+    }
   };
 
   const renderCanteenSeats = () => {
@@ -84,12 +150,12 @@ useEffect(() => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2;
                     const seatNum = baseNum + seatIndex + 1;
-                    const seatId = `canteen_${seatNum}`;
                     return (
                       <div 
-                        key={seatId}
-                        className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                        onClick={() => toggleSeat(seatId)}
+                        key={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        disabled={bookedSeats[seatNum]}
                       >
                         {seatNum}
                       </div>
@@ -100,12 +166,12 @@ useEffect(() => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2 + seatsPerTable;
                     const seatNum = baseNum + seatIndex + 1;
-                    const seatId = `canteen_${seatNum}`;
                     return (
                       <div 
-                        key={seatId}
-                        className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                        onClick={() => toggleSeat(seatId)}
+                        key={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        disabled={bookedSeats[seatNum]}
                       >
                         {seatNum}
                       </div>
@@ -135,12 +201,12 @@ useEffect(() => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2;
                     const seatNum = baseNum + seatIndex + 1;
-                    const seatId = `lib${libraryFloor}_${seatNum}`;
                     return (
                       <div 
-                        key={seatId}
-                        className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                        onClick={() => toggleSeat(seatId)}
+                        key={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        disabled={bookedSeats[seatNum]}
                       >
                         {seatNum}
                       </div>
@@ -151,12 +217,12 @@ useEffect(() => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2 + seatsPerTable;
                     const seatNum = baseNum + seatIndex + 1;
-                    const seatId = `lib${libraryFloor}_${seatNum}`;
                     return (
                       <div 
-                        key={seatId}
-                        className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                        onClick={() => toggleSeat(seatId)}
+                        key={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        disabled={bookedSeats[seatNum]}
                       >
                         {seatNum}
                       </div>
@@ -179,201 +245,175 @@ useEffect(() => {
       <div className={`classroom-type1 ${is01To07 ? 'classroom-01-07' : ''}`}>
         <div className="left-wall-table table horizontal-table">
           <div className="table-seats top-seats">
-            {[1, 2, 3].map(seatNum => {
-              const seatId = `${classroomRoom}_left_top_${seatNum}`;
-              return (
-                <div 
-                  key={seatId}
-                  className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                  onClick={() => toggleSeat(seatId)}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
+            {[1, 2, 3].map(seatNum => (
+              <div 
+                key={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                onClick={() => toggleSeat(seatNum)}
+                disabled={bookedSeats[seatNum]}
+              >
+                {seatNum}
+              </div>
+            ))}
           </div>
           <div className="table-seats bottom-seats">
-            {[4, 5, 6].map(seatNum => {
-              const seatId = `${classroomRoom}_left_bottom_${seatNum}`;
-              return (
-                <div 
-                  key={seatId}
-                  className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                  onClick={() => toggleSeat(seatId)}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
+            {[4, 5, 6].map(seatNum => (
+              <div 
+                key={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                onClick={() => toggleSeat(seatNum)}
+                disabled={bookedSeats[seatNum]}
+              >
+                {seatNum}
+              </div>
+            ))}
           </div>
         </div>
 
         <div className="right-wall-table table horizontal-table">
           <div className="table-seats top-seats">
-            {[7, 8, 9].map(seatNum => {
-              const seatId = `${classroomRoom}_right_top_${seatNum}`;
-              return (
-                <div 
-                  key={seatId}
-                  className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                  onClick={() => toggleSeat(seatId)}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
+            {[7, 8, 9].map(seatNum => (
+              <div 
+                key={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                onClick={() => toggleSeat(seatNum)}
+                disabled={bookedSeats[seatNum]}
+              >
+                {seatNum}
+              </div>
+            ))}
           </div>
           <div className="table-seats bottom-seats">
-            {[10, 11, 12].map(seatNum => {
-              const seatId = `${classroomRoom}_right_bottom_${seatNum}`;
-              return (
-                <div 
-                  key={seatId}
-                  className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                  onClick={() => toggleSeat(seatId)}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
+            {[10, 11, 12].map(seatNum => (
+              <div 
+                key={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                onClick={() => toggleSeat(seatNum)}
+                disabled={bookedSeats[seatNum]}
+              >
+                {seatNum}
+              </div>
+            ))}
           </div>
         </div>
 
-<div className="front-wall-tables">
-  {[2, 1, 3].map(tableNum => ( // 原数组为 [1,2,3]，改为 [2,1,3]
-    <div key={`front-table-${tableNum}`} className="table vertical-table">
-      {/* 原有座位逻辑完全不变，仅修改tableNum顺序 */}
-      {!is01To07 && (
-        <>
-          <div className="table-seats top-seats">
-            {[13 + (tableNum - 1) * 12, 14 + (tableNum - 1) * 12, 15 + (tableNum - 1) * 12].map(seatNum => {
-              const seatId = `${classroomRoom}_front${tableNum}_top_${seatNum}`;
-              return (
-                <div 
-                  key={seatId}
-                  className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                  onClick={() => toggleSeat(seatId)}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
-          </div>
-          <div className="table-seats bottom-seats">
-            {[16 + (tableNum - 1) * 12, 17 + (tableNum - 1) * 12, 18 + (tableNum - 1) * 12].map(seatNum => {
-              const seatId = `${classroomRoom}_front${tableNum}_bottom_${seatNum}`;
-              return (
-                <div 
-                  key={seatId}
-                  className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                  onClick={() => toggleSeat(seatId)}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-      <div className="table-seats left-seats">
-        {[19 + (tableNum - 1) * 12, 20 + (tableNum - 1) * 12, 21 + (tableNum - 1) * 12].map(seatNum => {
-          const seatId = `${classroomRoom}_front${tableNum}_left_${seatNum}`;
-          return (
-            <div 
-              key={seatId}
-              className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-              onClick={() => toggleSeat(seatId)}
-            >
-              {seatNum}
+        <div className="front-wall-tables">
+          {[2, 1, 3].map(tableNum => (
+            <div key={`front-table-${tableNum}`} className="table vertical-table">
+              {!is01To07 && (
+                <>
+                  <div className="table-seats top-seats">
+                    {[13 + (tableNum - 1) * 12, 14 + (tableNum - 1) * 12, 15 + (tableNum - 1) * 12].map(seatNum => (
+                      <div 
+                        key={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        disabled={bookedSeats[seatNum]}
+                      >
+                        {seatNum}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="table-seats bottom-seats">
+                    {[16 + (tableNum - 1) * 12, 17 + (tableNum - 1) * 12, 18 + (tableNum - 1) * 12].map(seatNum => (
+                      <div 
+                        key={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        disabled={bookedSeats[seatNum]}
+                      >
+                        {seatNum}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              <div className="table-seats left-seats">
+                {[19 + (tableNum - 1) * 12, 20 + (tableNum - 1) * 12, 21 + (tableNum - 1) * 12].map(seatNum => (
+                  <div 
+                    key={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                    onClick={() => toggleSeat(seatNum)}
+                    disabled={bookedSeats[seatNum]}
+                  >
+                    {seatNum}
+                  </div>
+                ))}
+              </div>
+              <div className="table-seats right-seats">
+                {[22 + (tableNum - 1) * 12, 23 + (tableNum - 1) * 12, 24 + (tableNum - 1) * 12].map(seatNum => (
+                  <div 
+                    key={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                    onClick={() => toggleSeat(seatNum)}
+                    disabled={bookedSeats[seatNum]}
+                  >
+                    {seatNum}
+                  </div>
+                ))}
+              </div>
             </div>
-          );
-        })}
-      </div>
-      <div className="table-seats right-seats">
-        {[22 + (tableNum - 1) * 12, 23 + (tableNum - 1) * 12, 24 + (tableNum - 1) * 12].map(seatNum => {
-          const seatId = `${classroomRoom}_front${tableNum}_right_${seatNum}`;
-          return (
-            <div 
-              key={seatId}
-              className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-              onClick={() => toggleSeat(seatId)}
-            >
-              {seatNum}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  ))}
-</div>
+          ))}
+        </div>
 
-  <div className="back-wall-tables">
-  {[2, 1, 3].map(tableNum => ( // 原数组为 [1,2,3]，改为 [2,1,3]
-    <div key={`back-table-${tableNum}`} className="table vertical-table">
-      {/* 原有座位逻辑完全不变，仅修改tableNum顺序 */}
-      {!is01To07 && (
-        <>
-          <div className="table-seats top-seats">
-            {[49 + (tableNum - 1) * 12, 50 + (tableNum - 1) * 12, 51 + (tableNum - 1) * 12].map(seatNum => {
-              const seatId = `${classroomRoom}_back${tableNum}_top_${seatNum}`;
-              return (
-                <div 
-                  key={seatId}
-                  className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                  onClick={() => toggleSeat(seatId)}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
-          </div>
-          <div className="table-seats bottom-seats">
-            {[52 + (tableNum - 1) * 12, 53 + (tableNum - 1) * 12, 54 + (tableNum - 1) * 12].map(seatNum => {
-              const seatId = `${classroomRoom}_back${tableNum}_bottom_${seatNum}`;
-              return (
-                <div 
-                  key={seatId}
-                  className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                  onClick={() => toggleSeat(seatId)}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-      <div className="table-seats left-seats">
-        {[55 + (tableNum - 1) * 12, 56 + (tableNum - 1) * 12, 57 + (tableNum - 1) * 12].map(seatNum => {
-          const seatId = `${classroomRoom}_back${tableNum}_left_${seatNum}`;
-          return (
-            <div 
-              key={seatId}
-              className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-              onClick={() => toggleSeat(seatId)}
-            >
-              {seatNum}
+        <div className="back-wall-tables">
+          {[2, 1, 3].map(tableNum => (
+            <div key={`back-table-${tableNum}`} className="table vertical-table">
+              {!is01To07 && (
+                <>
+                  <div className="table-seats top-seats">
+                    {[49 + (tableNum - 1) * 12, 50 + (tableNum - 1) * 12, 51 + (tableNum - 1) * 12].map(seatNum => (
+                      <div 
+                        key={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        disabled={bookedSeats[seatNum]}
+                      >
+                        {seatNum}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="table-seats bottom-seats">
+                    {[52 + (tableNum - 1) * 12, 53 + (tableNum - 1) * 12, 54 + (tableNum - 1) * 12].map(seatNum => (
+                      <div 
+                        key={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        disabled={bookedSeats[seatNum]}
+                      >
+                        {seatNum}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              <div className="table-seats left-seats">
+                {[55 + (tableNum - 1) * 12, 56 + (tableNum - 1) * 12, 57 + (tableNum - 1) * 12].map(seatNum => (
+                  <div 
+                    key={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                    onClick={() => toggleSeat(seatNum)}
+                    disabled={bookedSeats[seatNum]}
+                  >
+                    {seatNum}
+                  </div>
+                ))}
+              </div>
+              <div className="table-seats right-seats">
+                {[58 + (tableNum - 1) * 12, 59 + (tableNum - 1) * 12, 60 + (tableNum - 1) * 12].map(seatNum => (
+                  <div 
+                    key={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                    onClick={() => toggleSeat(seatNum)}
+                    disabled={bookedSeats[seatNum]}
+                  >
+                    {seatNum}
+                  </div>
+                ))}
+              </div>
             </div>
-          );
-        })}
-      </div>
-      <div className="table-seats right-seats">
-        {[58 + (tableNum - 1) * 12, 59 + (tableNum - 1) * 12, 60 + (tableNum - 1) * 12].map(seatNum => {
-          const seatId = `${classroomRoom}_back${tableNum}_right_${seatNum}`;
-          return (
-            <div 
-              key={seatId}
-              className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-              onClick={() => toggleSeat(seatId)}
-            >
-              {seatNum}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  ))}
-</div>
+          ))}
+        </div>
       </div>
     );
   };
@@ -400,12 +440,12 @@ useEffect(() => {
                 <div className="seat-group left-group">
                   {[...Array(seatsPerSide)].map((_, seatIndex) => {
                     const seatNum = rowBaseNum + seatIndex + 1;
-                    const seatId = `${classroomRoom}_${seatNum}`;
                     return (
                       <div 
-                        key={seatId}
-                        className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                        onClick={() => toggleSeat(seatId)}
+                        key={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        disabled={bookedSeats[seatNum]}
                       >
                         {seatNum}
                       </div>
@@ -415,12 +455,12 @@ useEffect(() => {
                 <div className="seat-group right-group">
                   {[...Array(seatsPerSide)].map((_, seatIndex) => {
                     const seatNum = rowBaseNum + seatsPerSide + seatIndex + 1;
-                    const seatId = `${classroomRoom}_${seatNum}`;
                     return (
                       <div 
-                        key={seatId}
-                        className={`seat ${selectedSeats.includes(seatId) ? 'selected' : ''}`}
-                        onClick={() => toggleSeat(seatId)}
+                        key={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        disabled={bookedSeats[seatNum]}
                       >
                         {seatNum}
                       </div>
@@ -436,11 +476,13 @@ useEffect(() => {
   };
 
   const renderSeatMap = () => {
-    if (location === 'canteen') {
+    if (loading) return <div>Loading seats...</div>;
+    
+    if (location === 'canteen' && selectedDate && selectedHour) {
       return renderCanteenSeats();
-    } else if (location === 'library' && libraryFloor) {
+    } else if (location === 'library' && libraryFloor && selectedDate && selectedHour) {
       return renderLibrarySeats();
-    } else if (location === 'classroom' && classroomRoom) {
+    } else if (location === 'classroom' && classroomRoom && selectedDate && selectedHour) {
       const roomNum = classroomRoom.split('-')[1];
       if (['13', '14', '15'].includes(roomNum)) {
         return renderClassroomType2();
@@ -530,6 +572,34 @@ useEffect(() => {
   background-color: #f1f5f9;
   cursor: not-allowed;
   opacity: 0.8;
+}
+
+.time-picker-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.time-picker-group .form-group {
+  flex: 1;
+}
+
+.booking-button {
+  background-color: #1e40af;
+  color: white;
+  border: none;
+  padding: 0.85rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.booking-button:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
 }
 
 .selection-summary {
@@ -636,6 +706,11 @@ useEffect(() => {
 
 .seat.selected {
   background-color: #1e40af;
+}
+
+.seat.booked {
+  background-color: #ef4444;
+  cursor: not-allowed;
 }
 
 .table-seats {
@@ -813,193 +888,247 @@ useEffect(() => {
         `}
       </style>
 
-    {selectedSeats.length > 0 && (
-  <div className="seat-notification" style={{ top: scrollY >= 80 ? 0 : '80px' }}>
-    <p>You have selected {selectedSeats.length} seat(s). Please confirm your reservation.</p>
-  </div>
-)}
-
-    <div className="seat-container">
-      <div className="seat-sidebar">
-        <h2>Select Location</h2>
-        
-        <div className="form-group">
-          <label>Location</label>
-          <select 
-            value={location} 
-            onChange={(e) => setLocation(e.target.value)}
-            className="form-control"
-          >
-            <option value="">Select a location</option>
-            <option value="classroom">Classroom</option>
-            <option value="canteen">Canteen</option>
-            <option value="library">Library</option>
-          </select>
+      {selectedSeats.length > 0 && (
+        <div className="seat-notification" style={{ top: scrollY >= 80 ? 0 : '80px' }}>
+          <p>You have selected {selectedSeats.length} seat(s). Please confirm your reservation.</p>
         </div>
-        
-        {location === 'library' && (
+      )}
+
+      <div className="seat-container">
+        <div className="seat-sidebar">
+          <h2>Select Location</h2>
+          
           <div className="form-group">
-            <label>Library Floor</label>
+            <label>Location</label>
             <select 
-              value={libraryFloor} 
-              onChange={(e) => setLibraryFloor(e.target.value)}
+              value={location} 
+              onChange={(e) => setLocation(e.target.value)}
               className="form-control"
             >
-              <option value="">Select a floor</option>
-              <option value="1">Floor 1</option>
-              <option value="2">Floor 2</option>
+              <option value="">Select a location</option>
+              <option value="classroom">Classroom</option>
+              <option value="canteen">Canteen</option>
+              <option value="library">Library</option>
             </select>
           </div>
-        )}
-        
-        {location === 'classroom' && (
-          <>
-            <div className="form-group">
-              <label>Building</label>
-              <select 
-                value={classroomBuilding} 
-                onChange={(e) => setClassroomBuilding(e.target.value)}
-                className="form-control"
-              >
-                <option value="">Select a building</option>
-                <option value="A">Building A</option>
-                <option value="B">Building B</option>
-                <option value="C">Building C</option>
-                <option value="E">Building E</option>
-              </select>
-            </div>
-            
-            {classroomBuilding !== 'E' && (
-              <div className="form-group">
-                <label>Floor</label>
-                <select 
-                  value={classroomFloor} 
-                  onChange={(e) => setClassroomFloor(e.target.value)}
-                  className="form-control"
-                  disabled={!classroomBuilding}
-                >
-                  <option value="">Select a floor</option>
-                  {getAvailableFloors().map(floor => (
-                    <option key={floor} value={floor}>Floor {floor}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            
-            {classroomBuilding === 'E' && (
-              <div className="form-group">
-                <label>Floor</label>
-                <input 
-                  type="text" 
-                  value="2" 
-                  readOnly 
-                  className="form-control"
-                />
-              </div>
-            )}
-            
-            <div className="form-group">
-              <label>Room</label>
-              <select 
-                value={classroomRoom} 
-                onChange={(e) => setClassroomRoom(e.target.value)}
-                className="form-control"
-                disabled={!classroomBuilding || (classroomBuilding !== 'E' && !classroomFloor)}
-              >
-                <option value="">Select a room</option>
-                {generateClassroomRooms().map(room => (
-                  <option key={room} value={room}>{room}</option>
-                ))}
-              </select>
-            </div>
-          </>
-        )}
-        
-        <div className="selection-summary">
-          <h3>Selection Summary</h3>
-          <p>Location: {location ? location.charAt(0).toUpperCase() + location.slice(1) : 'Not selected'}</p>
           
           {location === 'library' && (
-            <p>Floor: {libraryFloor ? `Floor ${libraryFloor}` : 'Not selected'}</p>
+            <div className="form-group">
+              <label>Library Floor</label>
+              <select 
+                value={libraryFloor} 
+                onChange={(e) => setLibraryFloor(e.target.value)}
+                className="form-control"
+              >
+                <option value="">Select a floor</option>
+                <option value="1">Floor 1</option>
+                <option value="2">Floor 2</option>
+              </select>
+            </div>
           )}
           
           {location === 'classroom' && (
             <>
-              <p>Building: {classroomBuilding || 'Not selected'}</p>
-              <p>Floor: {classroomFloor ? `Floor ${classroomFloor}` : (classroomBuilding === 'E' ? 'Floor 2' : 'Not selected')}</p>
-              <p>Room: {classroomRoom || 'Not selected'}</p>
+              <div className="form-group">
+                <label>Building</label>
+                <select 
+                  value={classroomBuilding} 
+                  onChange={(e) => setClassroomBuilding(e.target.value)}
+                  className="form-control"
+                >
+                  <option value="">Select a building</option>
+                  <option value="A">Building A</option>
+                  <option value="B">Building B</option>
+                  <option value="C">Building C</option>
+                  <option value="E">Building E</option>
+                </select>
+              </div>
+              
+              {classroomBuilding !== 'E' && (
+                <div className="form-group">
+                  <label>Floor</label>
+                  <select 
+                    value={classroomFloor} 
+                    onChange={(e) => setClassroomFloor(e.target.value)}
+                    className="form-control"
+                    disabled={!classroomBuilding}
+                  >
+                    <option value="">Select a floor</option>
+                    {getAvailableFloors().map(floor => (
+                      <option key={floor} value={floor}>Floor {floor}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              {classroomBuilding === 'E' && (
+                <div className="form-group">
+                  <label>Floor</label>
+                  <input 
+                    type="text" 
+                    value="2" 
+                    readOnly 
+                    className="form-control"
+                  />
+                </div>
+              )}
+              
+              <div className="form-group">
+                <label>Room</label>
+                <select 
+                  value={classroomRoom} 
+                  onChange={(e) => setClassroomRoom(e.target.value)}
+                  className="form-control"
+                  disabled={!classroomBuilding || (classroomBuilding !== 'E' && !classroomFloor)}
+                >
+                  <option value="">Select a room</option>
+                  {generateClassroomRooms().map(room => (
+                    <option key={room} value={room}>{room}</option>
+                  ))}
+                </select>
+              </div>
             </>
           )}
           
-          {selectedSeats.length > 0 && (
-            <div className="selected-seats">
-              <h4>Selected Seats:</h4>
-              {selectedSeats.map(seat => {
-                let roomIdentifier = '';
-                let seatNumber = '';
-                
-                if (location === 'classroom' && classroomRoom) {
-                  roomIdentifier = classroomRoom;
-                  const seatParts = seat.split('_');
-                  seatNumber = seatParts.pop();
-                } else if (location === 'library' && libraryFloor) {
-                  roomIdentifier = `Library Floor ${libraryFloor}`;
-                  const seatParts = seat.split('_');
-                  seatNumber = seatParts.pop();
-                } else if (location === 'canteen') {
-                  roomIdentifier = 'Canteen';
-                  const seatParts = seat.split('_');
-                  seatNumber = seatParts.pop();
-                }
-                
-                return <p key={seat}>({roomIdentifier}) {seatNumber}</p>;
-              })}
+          <div className="time-picker-group">
+            <div className="form-group">
+              <label>Date</label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="form-control"
+                min={new Date().toISOString().split('T')[0]}
+              />
             </div>
-          )}
-        </div>
-      </div>
-      
-      <div className="seat-main">
-        <div className="seat-content">
-          <h1>Seat Reservation</h1>
+            
+            <div className="form-group">
+              <label>Start Time (Hour)</label>
+              <select
+                value={selectedHour}
+                onChange={(e) => setSelectedHour(e.target.value)}
+                className="form-control"
+              >
+                <option value="">Select hour</option>
+                {[...Array(24).keys()].map(hour => (
+                  <option key={hour} value={hour.toString().padStart(2, '0')}>
+                    {hour}:00
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           
-          {!location ? (
-            <div className="empty-state">
-              <p>Please select a location from the sidebar to view available seats</p>
-            </div>
-          ) : location === 'canteen' ? (
-            <div className="location-view">
-              <h2>Canteen Seating</h2>
-              <div className="seat-map">
-                {renderSeatMap()}
-              </div>
-            </div>
-          ) : location === 'library' && !libraryFloor ? (
-            <div className="empty-state">
-              <p>Please select a floor to view library seating</p>
-            </div>
-          ) : location === 'library' ? (
-            <div className="location-view">
-              <h2>Library - Floor {libraryFloor}</h2>
-              <div className="seat-map">
-                {renderSeatMap()}
-              </div>
-            </div>
-          ) : location === 'classroom' && (!classroomBuilding || (classroomBuilding !== 'E' && !classroomFloor) || !classroomRoom) ? (
-            <div className="empty-state">
-              <p>Please complete the classroom selection to view seating</p>
-            </div>
-          ) : (
-            <div className="location-view">
-              <h2>Classroom {classroomRoom}</h2>
-              <div className="seat-map">
-                {renderSeatMap()}
-              </div>
+          {selectedHour && (
+            <div className="form-group">
+              <label>End Time</label>
+              <input
+                type="text"
+                value={`${endTime}:00`}
+                readOnly
+                className="form-control"
+              />
             </div>
           )}
+          
+          <div className="selection-summary">
+            <h3>Selection Summary</h3>
+            <p>Location: {location ? location.charAt(0).toUpperCase() + location.slice(1) : 'Not selected'}</p>
+            
+            {location === 'library' && (
+              <p>Floor: {libraryFloor ? `Floor ${libraryFloor}` : 'Not selected'}</p>
+            )}
+            
+            {location === 'classroom' && (
+              <>
+                <p>Building: {classroomBuilding || 'Not selected'}</p>
+                <p>Floor: {classroomFloor ? `Floor ${classroomFloor}` : (classroomBuilding === 'E' ? 'Floor 2' : 'Not selected')}</p>
+                <p>Room: {classroomRoom || 'Not selected'}</p>
+              </>
+            )}
+            
+            {selectedDate && selectedHour && (
+              <p>Time: {selectedDate} {selectedHour}:00 - {endTime}:00</p>
+            )}
+            
+            {selectedSeats.length > 0 && (
+              <div className="selected-seats">
+                <h4>Selected Seats:</h4>
+                {selectedSeats.map(seat => (
+                  <p key={seat}>{seat}</p>
+                ))}
+              </div>
+            )}
+            
+            <button
+              className="booking-button"
+              onClick={handleBooking}
+              disabled={selectedSeats.length === 0 || !selectedDate || !selectedHour || !classroomRoom || loading}
+            >
+              Confirm Booking
+            </button>
+          </div>
+        </div>
+        
+        <div className="seat-main">
+          <div className="seat-content">
+            <h1>Seat Reservation</h1>
+            
+            {!location ? (
+              <div className="empty-state">
+                <p>Please select a location from the sidebar to view available seats</p>
+              </div>
+            ) : location === 'canteen' ? (
+              !selectedDate || !selectedHour ? (
+                <div className="empty-state">
+                  <p>Please select date and time to view canteen seating</p>
+                </div>
+              ) : (
+                <div className="location-view">
+                  <h2>Canteen Seating</h2>
+                  <div className="seat-map">
+                    {renderSeatMap()}
+                  </div>
+                </div>
+              )
+            ) : location === 'library' && !libraryFloor ? (
+              <div className="empty-state">
+                <p>Please select a floor to view library seating</p>
+              </div>
+            ) : location === 'library' ? (
+              !selectedDate || !selectedHour ? (
+                <div className="empty-state">
+                  <p>Please select date and time to view library seating</p>
+                </div>
+              ) : (
+                <div className="location-view">
+                  <h2>Library - Floor {libraryFloor}</h2>
+                  <div className="seat-map">
+                    {renderSeatMap()}
+                  </div>
+                </div>
+              )
+            ) : location === 'classroom' && (!classroomBuilding || (classroomBuilding !== 'E' && !classroomFloor) || !classroomRoom) ? (
+              <div className="empty-state">
+                <p>Please complete the classroom selection to view seating</p>
+              </div>
+            ) : (
+              !selectedDate || !selectedHour ? (
+                <div className="empty-state">
+                  <p>Please select date and time to view classroom seating</p>
+                </div>
+              ) : (
+                <div className="location-view">
+                  <h2>Classroom {classroomRoom}</h2>
+                  <div className="seat-map">
+                    {renderSeatMap()}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
         </div>
       </div>
-    </div>
     </div>
   );
 };

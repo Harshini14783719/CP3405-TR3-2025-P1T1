@@ -20,21 +20,32 @@ const SignIn = () => {
       [name]: type === 'checkbox' ? checked : value
     }));
   };
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const { email, password, rememberMe } = formData;
-    if (email && password) {
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  const { email, password, rememberMe } = formData;
+  if (!email || !password) {
+    alert('Please fill in the form completely!');
+    return;
+  }
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await response.json();
+    if (data.success) {
       localStorage.setItem('isLoggedIn', 'true');
-      if (rememberMe) {
-        localStorage.setItem('savedEmail', email);
-      } else {
-        localStorage.removeItem('savedEmail');
-      }
+      localStorage.setItem('currentUser', JSON.stringify(data.user));
+      if (rememberMe) localStorage.setItem('savedEmail', email);
       navigate('/', { replace: true });
     } else {
-      alert('Please fill in the form completely!');
+      alert(data.message);
     }
-  };
+  } catch (err) {
+    alert('Login failed: Network error');
+  }
+};
   const styles = {
     signinContainer: {
       position: 'relative',
@@ -200,6 +211,7 @@ const SignIn = () => {
               e.target.style.borderColor = '#D1D5DB';
               e.target.style.boxShadow = 'none';
             }}
+            autocomplete="current-password"
           />
         </div>
         

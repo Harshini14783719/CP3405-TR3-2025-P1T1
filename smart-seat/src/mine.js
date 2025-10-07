@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const Mine = () => {
-  const userData = {
+  const [userData, setUserData] = useState({
     name: 'John Doe',
     id: '123456',
     birthday: '2025-01-01',
@@ -17,7 +18,23 @@ const Mine = () => {
     },
     favoriteClassrooms: ['C3-04', 'C4-14', 'A2-11'],
     favoriteSeats: ['Table2-06']
-  };
+  });
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editData, setEditData] = useState({
+    name: '',
+    birthday: '',
+    gender: '',
+    major: ''
+  });
+
+  useEffect(() => {
+    setEditData({
+      name: userData.name,
+      birthday: userData.birthday,
+      gender: userData.gender,
+      major: userData.major
+    });
+  }, [userData]);
 
   const genderDotStyle = {
     width: '20px',
@@ -28,7 +45,23 @@ const Mine = () => {
     right: '4px',
     border: '2px solid #FFFFFF',
     backgroundColor: userData.gender === 'male' ? '#165DFF' : '#FF6B9E',
-    Zindex: 2
+    zIndex: 2
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleUpdateProfile = async () => {
+    try {
+      const response = await axios.put(`/api/users/${userData.id}`, editData);
+      setUserData(prev => ({ ...prev, ...response.data.user }));
+      setIsEditModalOpen(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Update failed: ' + (error.response?.data?.message || 'Unknown error'));
+    }
   };
 
   return (
@@ -150,6 +183,21 @@ const Mine = () => {
                 }}>{userData.birthday}</span>
               </div>
 
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                <span style={{
+                  fontSize: '0.95rem',
+                  color: '#64748B',
+                  marginBottom: '0.3rem'
+                }}>Gender</span>
+                <span style={{
+                  fontSize: '1.1rem',
+                  color: '#1D2129',
+                  fontWeight: 500
+                }}>{userData.gender === 'male' ? 'Male' : 'Female'}</span>
+              </div>
             </div>
 
             <div style={{
@@ -159,18 +207,23 @@ const Mine = () => {
               marginBottom: '1.5rem'
             }}></div>
 
-            <button style={{
-              width: '100%',
-              backgroundColor: '#165DFF',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '0.6rem 0',
-              fontSize: '0.9rem',
-              fontWeight: 500,
-              cursor: 'pointer',
-              transition: 'backgroundColor 0.2s ease'
-            }}>Edit Profile</button>
+            <button 
+              style={{
+                width: '100%',
+                backgroundColor: '#165DFF',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '0.6rem 0',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'backgroundColor 0.2s ease'
+              }}
+              onClick={() => setIsEditModalOpen(true)}
+            >
+              Edit Profile
+            </button>
           </div>
         </div>
 
@@ -306,52 +359,170 @@ const Mine = () => {
               ))}
             </div>
           </div>
+        </div>
+      </div>
 
+      {isEditModalOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
           <div style={{
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'white',
             borderRadius: '12px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
-            padding: '1.8rem'
+            padding: '2rem',
+            width: '500px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
           }}>
+            <h3 style={{
+              fontSize: '1.3rem',
+              color: '#1D2129',
+              margin: '0 0 1.5rem 0',
+              fontWeight: 600
+            }}>Edit Profile</h3>
+            
             <div style={{
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '1.2rem'
+              flexDirection: 'column',
+              gap: '1.2rem',
+              marginBottom: '1.5rem'
             }}>
-              <h3 style={{
-                fontSize: '1.1rem',
-                color: '#1D2129',
-                margin: 0,
-                fontWeight: 600
-              }}>My Favorite Seats</h3>
-              <a href="/favorite-seats" style={{
-                fontSize: '0.95rem',
-                color: '#165DFF',
-                textDecoration: 'none',
-                fontWeight: 500
-              }}>view all &gt;</a>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.95rem',
+                  color: '#64748B',
+                  marginBottom: '0.3rem'
+                }}>Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={editData.name}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem',
+                    borderRadius: '6px',
+                    border: '1px solid #E2E8F0',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.95rem',
+                  color: '#64748B',
+                  marginBottom: '0.3rem'
+                }}>Birthday</label>
+                <input
+                  type="date"
+                  name="birthday"
+                  value={editData.birthday}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem',
+                    borderRadius: '6px',
+                    border: '1px solid #E2E8F0',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.95rem',
+                  color: '#64748B',
+                  marginBottom: '0.3rem'
+                }}>Gender</label>
+                <select
+                  name="gender"
+                  value={editData.gender}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem',
+                    borderRadius: '6px',
+                    border: '1px solid #E2E8F0',
+                    fontSize: '1rem'
+                  }}
+                >
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '0.95rem',
+                  color: '#64748B',
+                  marginBottom: '0.3rem'
+                }}>Major</label>
+                <input
+                  type="text"
+                  name="major"
+                  value={editData.major}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '0.6rem',
+                    borderRadius: '6px',
+                    border: '1px solid #E2E8F0',
+                    fontSize: '1rem'
+                  }}
+                />
+              </div>
             </div>
 
             <div style={{
               display: 'flex',
-              gap: '1.5rem',
-              flexWrap: 'wrap'
+              gap: '1rem',
+              justifyContent: 'flex-end'
             }}>
-              {userData.favoriteSeats.map((seat, index) => (
-                <span key={index} style={{
-                  backgroundColor: '#F0F5FF',
-                  color: '#165DFF',
-                  borderRadius: '4px',
-                  padding: '0.5rem 1rem',
-                  fontSize: '0.95rem',
-                  fontWeight: 500
-                }}>{seat}</span>
-              ))}
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '6px',
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: 'white',
+                  color: '#64748B',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateProfile}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#165DFF',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Save Changes
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

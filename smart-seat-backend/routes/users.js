@@ -3,18 +3,17 @@ const mysql = require('mysql2/promise');
 const router = express.Router();
 
 const dbConfig = {
-  host: 'localhost',
+  host: 'cp3405-tr3-2025-p1t1-mysql-1',
   user: 'root',
-  password: 'asdfgh123',  // 数据库密码
+  password: 'asdfgh123',
   database: 'smart_seat',
 };
 
-// 查询所有用户
 router.get('/', async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);
     const [users] = await connection.execute(`
-      SELECT id, email, name, password, role
+      SELECT id, email, name, password, role, birthday, gender, major
       FROM users
     `);
     await connection.end();
@@ -25,12 +24,11 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 根据ID查询单个用户
 router.get('/:id', async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);
     const [users] = await connection.execute(`
-      SELECT id, email, name, password, role
+      SELECT id, email, name, password, role, birthday, gender, major
       FROM users
       WHERE id = ?
     `, [req.params.id]);
@@ -47,37 +45,63 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// 更新用户信息
 router.put('/:id', async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);
 
     const userId = req.params.id;
-    const { email, name, password, role } = req.body;
+    const { email, name, password, role, birthday, gender, major } = req.body;
 
-    // 查询用户是否存在
     const [existingUsers] = await connection.execute('SELECT * FROM users WHERE id = ?', [userId]);
     if (existingUsers.length === 0) {
       await connection.end();
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // 保留旧密码，如果请求中未传密码
     const finalPassword = password || existingUsers[0].password;
 
     await connection.execute(
-      'UPDATE users SET email = ?, name = ?, password = ?, role = ? WHERE id = ?',
-      [email, name, finalPassword, role, userId]
+      'UPDATE users SET email = ?, name = ?, password = ?, role = ?, birthday = ?, gender = ?, major = ? WHERE id = ?',
+      [email || existingUsers[0].email, 
+       name || existingUsers[0].name, 
+       finalPassword, 
+       role || existingUsers[0].role,
+       birthday || existingUsers[0].birthday,
+       gender || existingUsers[0].gender,
+       major || existingUsers[0].major,
+       userId]
     );
 
-    // 查询更新后的用户
-    const [updatedUsers] = await connection.execute('SELECT id, email, name, password, role FROM users WHERE id = ?', [userId]);
+    const [updatedUsers] = await connection.execute(
+      'SELECT id, email, name, role, birthday, gender, major FROM users WHERE id = ?', 
+      [userId]
+    );
     await connection.end();
 
     res.json({ success: true, user: updatedUsers[0] });
   } catch (error) {
     console.error('更新用户失败:', error);
     res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+router.get('/me', async (req, res) => {
+  try {
+    const connection = await mysql.createConnection(dbConfig);
+    const userId = req.headers['user-id'];
+    const sql = userId ? 
+      'SELECT id, email, role, birthday, gender, major FROM users WHERE id = ?' : 
+      'SELECT id, email, role, birthday, gender, major FROM users LIMIT 1';
+    const [users] = await connection.execute(sql, userId ? [userId] : []);
+    
+    await connection.end();
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(users[0]);
+  } catch (error) {
+    console.error('fail to load user:', error);
+    res.status(500).json({ error: 'Failed to get current user' });
   }
 });
 

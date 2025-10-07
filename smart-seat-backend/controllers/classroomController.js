@@ -1,7 +1,7 @@
 const mysql = require('mysql2/promise');
 
 const dbConfig = {
-  host: 'localhost',
+  host: 'cp3405-tr3-2025-p1t1-mysql-1',
   user: 'root',
   password: 'asdfgh123',
   database: 'smart_seat',
@@ -9,20 +9,20 @@ const dbConfig = {
 
 exports.getClassroomWithSeats = async (req, res) => {
   try {
-    let { classroomId, date, hour } = req.query;
+    let { classroom, date, hour } = req.query;
 
-    if (!classroomId) return res.status(400).json({ message: 'Missing classroomId' });
+    if (!classroom) return res.status(400).json({ message: 'Missing classroom' });
     if (hour === undefined) return res.status(400).json({ message: 'Missing hour parameter' });
 
-    // 默认当天
     if (!date) date = new Date().toISOString().split('T')[0];
+    
+    const startTime = `${date}T${hour.toString().padStart(2, '0')}:00`;
 
     const connection = await mysql.createConnection(dbConfig);
 
-    // 查询教室信息
     const [classrooms] = await connection.execute(
-      'SELECT id, name, type, rows, cols FROM classrooms WHERE id = ?',
-      [classroomId]
+      'SELECT id, name, type, totalSeats FROM classrooms WHERE name = ?',
+      [classroom]
     );
 
     if (classrooms.length === 0) {
@@ -30,46 +30,37 @@ exports.getClassroomWithSeats = async (req, res) => {
       return res.status(404).json({ message: 'Classroom not found' });
     }
 
-    const classroom = classrooms[0];
+    const classroomData = classrooms[0];
+    const seats = {};
 
-    // 初始化座位二维数组
-    const seats = Array.from({ length: classroom.rows }, () =>
-      Array.from({ length: classroom.cols }, () => null)
-    );
-
-    // 查询指定小时的预约
     const sql = `
-      SELECT b.seatRow, b.seatCol, u.id AS userId, u.name AS userName
+      SELECT b.seatNumber, u.id AS userId, u.name AS userName
       FROM bookings b
       LEFT JOIN users u ON b.userId = u.id
-      WHERE b.classroomId = ? AND b.date = ? AND HOUR(b.startTime) <= ? AND HOUR(b.endTime) > ?
+      WHERE b.classroom = ? AND b.startTime = ?
     `;
-    const params = [classroomId, date, hour, hour];
+    const params = [classroom, startTime];
 
     const [bookings] = await connection.execute(sql, params);
 
     bookings.forEach(b => {
-      const row = b.seatRow - 1;
-      const col = b.seatCol - 1;
-      if (row >= 0 && row < classroom.rows && col >= 0 && col < classroom.cols) {
-        seats[row][col] = { userId: b.userId, userName: b.userName };
-      }
+      seats[b.seatNumber] = { userId: b.userId, userName: b.userName };
     });
 
     await connection.end();
 
     res.json({
       classroom: {
-        id: classroom.id,
-        name: classroom.name,
-        type: classroom.type,
-        rows: classroom.rows,
-        cols: classroom.cols,
+        id: classroomData.id,
+        name: classroomData.name,
+        type: classroomData.type,
+        totalSeats: classroomData.totalSeats,
       },
       seats,
+      startTime
     });
   } catch (error) {
-    console.error('获取教室失败:', error);
+    console.error('Error fetching classroom:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

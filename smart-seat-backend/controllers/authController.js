@@ -1,17 +1,16 @@
 const mysql = require('mysql2/promise');
 
 const dbConfig = {
-  host: 'localhost',
+  host: 'cp3405-tr3-2025-p1t1-mysql-1',
   user: 'root',
-  password: 'asdfgh123', // 请改成你的数据库密码
+  password: 'asdfgh123',
   database: 'smart_seat',
 };
 
-// 注册用户
 exports.register = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { email, password, role } = req.body;
 
-  if (!name || !email || !password || !role) {
+  if (!email || !password || !role) {
     return res.status(400).json({ success: false, message: 'All fields required' });
   }
 
@@ -29,14 +28,14 @@ exports.register = async (req, res) => {
     }
 
     const [result] = await connection.execute(
-      'INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)',
-      [name, email, password, role]
+      'INSERT INTO users (email, password, role) VALUES (?, ?, ?)',
+      [email, password, role]
     );
 
     const newUserId = result.insertId;
 
     const [users] = await connection.execute(
-      'SELECT id, name, email, role FROM users WHERE id = ?',
+      'SELECT id, email, role FROM users WHERE id = ?',
       [newUserId]
     );
 
@@ -49,29 +48,28 @@ exports.register = async (req, res) => {
   }
 };
 
-// 登录用户
 exports.login = async (req, res) => {
-  const { email, password, role } = req.body;
+  const { email, password } = req.body;
 
-  if (!email || !password || !role) {
-    return res.status(400).json({ success: false, message: 'Email, password and role required' });
+  if (!email || !password ) {
+    return res.status(400).json({ success: false, message: 'Email and password required' });
   }
 
   try {
     const connection = await mysql.createConnection(dbConfig);
 
     const [users] = await connection.execute(
-      'SELECT id, name, email, role FROM users WHERE email = ? AND password = ? AND role = ?',
-      [email, password, role]
+      'SELECT id, email, role FROM users WHERE email = ? AND password = ? ',
+      [email, password]
     );
 
     await connection.end();
 
     if (users.length === 0) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials or role' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    res.json({ success: true, user: users[0] });
+    res.json({ success: true, user: { id: users[0].id, email: users[0].email }});
   } catch (err) {
     console.error('Login failed:', err);
     res.status(500).json({ success: false, message: 'Server error' });
