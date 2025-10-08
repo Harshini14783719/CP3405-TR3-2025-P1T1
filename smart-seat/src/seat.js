@@ -16,7 +16,7 @@ const Seat = () => {
   const [scrollY, setScrollY] = useState(0);
   const [userInfo, setUserInfo] = useState({ id: 1, name: 'User' });
 
-  const getRoomIdentifier = () => {
+  const getRoomIdentifier = useCallback(() => {
     switch (location) {
       case 'classroom':
         return classroomRoom;
@@ -27,7 +27,7 @@ const Seat = () => {
       default:
         return '';
     }
-  };
+  }, [location, classroomRoom, libraryFloor]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -83,17 +83,16 @@ const Seat = () => {
 
   const fetchBookedSeats = useCallback(async () => {
     const room = getRoomIdentifier();
-    if (!room || !selectedDate || !selectedHour) return;
+    if (!room || !selectedDate || !selectedHour || !endTime) return;
     
     setLoading(true);
     try {
-      const response = await axios.get('/bookings/getBookedSeats', {
+      const response = await axios.get('/api/bookings/getBookedSeats', {
         params: {
           room,
           date: selectedDate,
           start_time: `${selectedHour}:00`,
-          end_time: `${endTime}:00`,
-          status: 1
+          end_time: `${endTime}:00`
         }
       });
       
@@ -143,7 +142,7 @@ const Seat = () => {
     
     try {
       for (const seat_number of selectedSeats) {
-        await axios.post('/bookings', {
+        await axios.post('/api/bookings', {
           book_id: userInfo.id,
           book_name: userInfo.name,
           room,
