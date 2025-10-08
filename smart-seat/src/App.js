@@ -9,6 +9,7 @@ import SignUp from './signup';
 import Form from './form';
 import SeatRecords from './seat-records';
 import LecClass from './lec-class';
+
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [hoveredTab, setHoveredTab] = useState('');
@@ -16,10 +17,13 @@ function App() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [seatSubItemHover, setSeatSubItemHover] = useState('');
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const seatRef = useRef(null);
   const profileRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
+
   const PrivateRoute = ({ element, requireLecturer = false }) => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -27,6 +31,7 @@ function App() {
     if (requireLecturer && currentUser?.role !== 'lecturer') return <Navigate to="/mine" replace />;
     return element;
   };
+
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const currentUser = localStorage.getItem('currentUser');
@@ -34,6 +39,7 @@ function App() {
       setUserInfo(JSON.parse(currentUser));
     }
   }, []);
+
   useEffect(() => {
     let path = location.pathname;
     if (path === '/') {
@@ -46,6 +52,7 @@ function App() {
     setHoveredTab('');
     setSeatSubItemHover('');
   }, [location.pathname, userInfo]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (seatRef.current && !seatRef.current.contains(event.target)) {
@@ -61,6 +68,7 @@ function App() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isLoggedIn) {
@@ -77,12 +85,38 @@ function App() {
           console.error('Failed to sync user info:', err);
         }
       };
-
       syncUserInfo();
-      const interval = setInterval(syncUserInfo, 300000);
-      return () => clearInterval(interval);
     }
   }, []);
+
+  const fetchNotifications = async () => {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!currentUser) return;
+    try {
+      const response = await axios.get('/api/bookings', {
+        params: {
+          userId: currentUser.id,
+          status: 1
+        }
+      });
+      const sortedNotifications = response.data.sort((a, b) => {
+        const dateA = new Date(`${a.date} ${a.start_time}`);
+        const dateB = new Date(`${b.date} ${b.start_time}`);
+        return dateB - dateA;
+      });
+      setNotifications(sortedNotifications);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  };
+
+  const handleNotificationClick = () => {
+    setNotificationOpen(!notificationOpen);
+    if (!notificationOpen) {
+      fetchNotifications();
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await axios.post('/api/auth/logout');
@@ -97,25 +131,36 @@ function App() {
       navigate('/signin', { replace: true });
     }
   };
+
   const handleEditProfile = () => {
     setProfileMenuOpen(false);
     navigate('/mine?edit=true');
   };
+
   const goToMine = () => {
     setProfileMenuOpen(false);
     navigate('/mine');
   };
+
   const handleSeatBooking = () => {
     setSeatMenuOpen(false);
     setActiveTab('seat');
     navigate('/seat');
   };
+
   const getUnderlineWidth = (tab) => {
     if (activeTab === tab || hoveredTab === tab || (tab === 'seat' && seatMenuOpen)) {
       return '120%';
     }
     return '0';
   };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  };
+
   const styles = {
     appContainer: {
       margin: 0,
@@ -257,8 +302,73 @@ function App() {
       minWidth: '200px',
       zIndex: 1000,
       border: '1px solid rgba(0, 0, 0, 0.08)'
+    },
+    notificationContainer: {
+      position: 'relative',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    notificationIcon: {
+      width: '24px',
+      height: '24px',
+      transition: 'opacity 0.2s ease'
+    },
+    modalOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      zIndex: 999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    notificationModal: {
+      backgroundColor: 'white',
+      borderRadius: '8px',
+      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
+      width: '90%',
+      maxWidth: '500px',
+      maxHeight: '80vh',
+      overflowY: 'auto',
+      zIndex: 1000,
+      position: 'relative'
+    },
+    notificationModalContent: {
+      padding: '24px'
+    },
+    notificationHeader: {
+      fontSize: '18px',
+      fontWeight: 600,
+      color: '#1D2129',
+      marginBottom: '16px',
+      paddingBottom: '12px',
+      borderBottom: '1px solid #E0E0E0'
+    },
+    notificationList: {
+      listStyle: 'none',
+      padding: 0,
+      margin: 0
+    },
+    notificationItem: {
+      padding: '16px',
+      borderBottom: '1px solid #F5F5F5',
+      color: '#4E5969',
+      fontSize: '14px',
+      lineHeight: '1.5'
+    },
+    noNotification: {
+      padding: '32px',
+      textAlign: 'center',
+      color: '#86909C',
+      fontSize: '14px'
     }
   };
+
   return (
     <div style={styles.appContainer}>
       {!['/signin', '/signup', '/form'].includes(location.pathname) && (
@@ -389,48 +499,89 @@ function App() {
             </NavLink>
           </div>
           
-          <div 
-            ref={profileRef}
-            style={styles.profileContainer}
-            onMouseEnter={() => {
-              setProfileMenuOpen(true);
-            }}
-            onMouseLeave={() => setProfileMenuOpen(false)}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div 
-              style={{ 
-                ...styles.profileImage,
-                ...(profileMenuOpen ? styles.profileImageHover : {})
-              }}
-              onClick={goToMine}
+              style={styles.notificationContainer}
+              onClick={handleNotificationClick}
+              onMouseEnter={() => setHoveredTab('notification')}
+              onMouseLeave={() => setHoveredTab('')}
             >
-              {userInfo?.email?.charAt(0).toUpperCase() || localStorage.getItem('savedEmail')?.charAt(0).toUpperCase() || 'U'}
+              <img 
+                src="/notification.png" 
+                alt="Notifications" 
+                style={styles.notificationIcon}
+              />
             </div>
             
-            {profileMenuOpen && (
+            <div 
+              ref={profileRef}
+              style={styles.profileContainer}
+              onMouseEnter={() => {
+                setProfileMenuOpen(true);
+              }}
+              onMouseLeave={() => setProfileMenuOpen(false)}
+            >
               <div 
-                style={styles.profileMenu}
-                onMouseLeave={() => setProfileMenuOpen(false)}
+                style={{ 
+                  ...styles.profileImage,
+                  ...(profileMenuOpen ? styles.profileImageHover : {})
+                }}
+                onClick={goToMine}
               >
-                <div 
-                  style={styles.dropdownItem}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditProfile();
-                  }}
-                >
-                  Edit Profile
-                </div>
-                <div 
-                  style={styles.dropdownItem}
-                  onClick={handleLogout}
-                >
-                  Logout
-                </div>
+                {userInfo?.email?.charAt(0).toUpperCase() || localStorage.getItem('savedEmail')?.charAt(0).toUpperCase() || 'U'}
               </div>
-            )}
+              
+              {profileMenuOpen && (
+                <div 
+                  style={styles.profileMenu}
+                  onMouseLeave={() => setProfileMenuOpen(false)}
+                >
+                  <div 
+                    style={styles.dropdownItem}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditProfile();
+                    }}
+                  >
+                    Edit Profile
+                  </div>
+                  <div 
+                    style={styles.dropdownItem}
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </nav>
+      )}
+      
+      {notificationOpen && (
+        <div style={styles.modalOverlay} onClick={() => setNotificationOpen(false)}>
+          <div 
+            style={styles.notificationModal}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={styles.notificationModalContent}>
+              <div style={styles.notificationHeader}>Booking Reminders</div>
+              {notifications.length > 0 ? (
+                <ul style={styles.notificationList}>
+                  {notifications.map(notification => (
+                    <li key={notification.id} style={styles.notificationItem}>
+                      Booking Start Reminder: Your booking is about to start. 
+                      Room: {notification.room}, Seat: {notification.seat_number}, 
+                      Date: {formatDate(notification.date)}, Time: {notification.start_time} - {notification.end_time}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div style={styles.noNotification}>No booking reminders available.</div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
       
       <Routes>
@@ -447,4 +598,5 @@ function App() {
     </div>
   );
 }
+
 export default App;
