@@ -69,6 +69,14 @@ function App() {
     };
   }, []);
 
+  const updateExpiredBookings = async (userId) => {
+    try {
+      await axios.post('/api/bookings/update-expired', { userId });
+    } catch (err) {
+      console.error('Failed to update expired bookings:', err);
+    }
+  };
+
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     if (isLoggedIn) {
@@ -81,6 +89,7 @@ function App() {
           const userData = await response.json();
           localStorage.setItem('currentUser', JSON.stringify(userData));
           setUserInfo(userData);
+          await updateExpiredBookings(userData.id);
         } catch (err) {
           console.error('Failed to sync user info:', err);
         }
@@ -299,7 +308,7 @@ function App() {
       borderRadius: '8px',
       boxShadow: '0 6px 16px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.05)',
       padding: '8px 0',
-      minWidth: '200px',
+      minWidth: '150px',
       zIndex: 1000,
       border: '1px solid rgba(0, 0, 0, 0.08)'
     },
@@ -366,6 +375,16 @@ function App() {
       textAlign: 'center',
       color: '#86909C',
       fontSize: '14px'
+    },
+    profileMenuItem: {
+      padding: '12px 20px',
+      color: '#4E5969',
+      textDecoration: 'none',
+      display: 'block',
+      fontSize: '14px',
+      transition: 'all 0.2s ease',
+      cursor: 'pointer',
+      textAlign: 'right'
     }
   };
 
@@ -537,7 +556,7 @@ function App() {
                   onMouseLeave={() => setProfileMenuOpen(false)}
                 >
                   <div 
-                    style={styles.dropdownItem}
+                    style={styles.profileMenuItem}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEditProfile();
@@ -546,7 +565,7 @@ function App() {
                     Edit Profile
                   </div>
                   <div 
-                    style={styles.dropdownItem}
+                    style={styles.profileMenuItem}
                     onClick={handleLogout}
                   >
                     Logout
