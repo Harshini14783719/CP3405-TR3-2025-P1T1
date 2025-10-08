@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+
 const SignUp = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -9,6 +11,7 @@ const SignUp = () => {
     confirmPassword: '',
     agreePolicy: false
   });
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -16,9 +19,11 @@ const SignUp = () => {
       [name]: type === 'checkbox' ? checked : (type === 'radio' ? value : value)
     }));
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const { identity, email, password, confirmPassword, agreePolicy } = formData;
+    
     if (!identity) {
       alert('Please select your identity (Student/Lecturer)!');
       return;
@@ -35,6 +40,7 @@ const SignUp = () => {
       alert('Please agree to the Privacy Policy!');
       return;
     }
+    
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -45,10 +51,11 @@ const SignUp = () => {
           role: identity 
         })
       });
+      
       const data = await response.json();
       if (data.success) {
-        alert('Registration successful! Please log in');
-        navigate('/signin', { replace: true });
+        localStorage.setItem('savedEmail', email);
+        navigate(`/form?role=${identity}`, { replace: true });
       } else {
         alert(data.message);
       }
@@ -56,6 +63,7 @@ const SignUp = () => {
       alert('Registration failed: Network error');
     }
   };
+
   const styles = {
     signupContainer: {
       position: 'relative',
@@ -227,6 +235,7 @@ const SignUp = () => {
       marginLeft: '4px'
     }
   };
+
   return (
     <div style={styles.signupContainer}>
       <div style={styles.signupBg}></div>
@@ -271,6 +280,7 @@ const SignUp = () => {
           <input
             type="email"
             name="email"
+            autoComplete="username"
             value={formData.email}
             onChange={handleChange}
             placeholder="Enter your email"
@@ -278,7 +288,7 @@ const SignUp = () => {
             style={styles.formInput}
             onFocus={(e) => Object.assign(e.target.style, styles.formInputFocus)}
             onBlur={(e) => {
-              e.target.style.borderColor = '#D1D5DB';
+  e.target.style.border = '1px solid #D1D5DB';
               e.target.style.boxShadow = 'none';
             }}
           />
@@ -295,10 +305,10 @@ const SignUp = () => {
             style={styles.formInput}
             onFocus={(e) => Object.assign(e.target.style, styles.formInputFocus)}
             onBlur={(e) => {
-              e.target.style.borderColor = '#D1D5DB';
+     e.target.style.border = '1px solid #D1D5DB';
               e.target.style.boxShadow = 'none';
             }}
-            autocomplete="new-password"
+            autoComplete="new-password"
           />
         </div>
         
@@ -313,10 +323,10 @@ const SignUp = () => {
             style={styles.formInput}
             onFocus={(e) => Object.assign(e.target.style, styles.formInputFocus)}
             onBlur={(e) => {
-              e.target.style.borderColor = '#D1D5DB';
+              e.target.style.border = '1px solid #D1D5DB';
               e.target.style.boxShadow = 'none';
             }}
-            autocomplete="new-password"
+            autoComplete="new-password"
           />
         </div>
         
@@ -348,4 +358,5 @@ const SignUp = () => {
     </div>
   );
 };
+
 export default SignUp;

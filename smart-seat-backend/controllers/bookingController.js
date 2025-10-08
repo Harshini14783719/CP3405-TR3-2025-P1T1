@@ -11,7 +11,7 @@ exports.getAllBookings = async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);
     const [bookings] = await connection.execute(`
-      SELECT b.id, b.userId, b.classroom, b.seatNumber, b.startTime
+      SELECT b.id, b.book_id, b.book_name, b.room, b.seat_number, b.date, b.start_time, b.end_time, b.status
       FROM bookings b
     `);
     await connection.end();
@@ -26,7 +26,7 @@ exports.getBookingById = async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);
     const [bookings] = await connection.execute(`
-      SELECT b.id, b.userId, b.classroom, b.seatNumber, b.startTime
+      SELECT b.id, b.book_id, b.book_name, b.room, b.seat_number, b.date, b.start_time, b.end_time, b.status
       FROM bookings b
       WHERE b.id = ?
     `, [req.params.id]);
@@ -43,17 +43,17 @@ exports.getBookingById = async (req, res) => {
 exports.createBooking = async (req, res) => {
   try {
     const connection = await mysql.createConnection(dbConfig);
-    const { userId, classroom, seatNumber, startTime } = req.body;
+    const { book_id, book_name, room, seat_number, date, start_time, end_time } = req.body;
 
-    if (!userId || !classroom || seatNumber === undefined || !startTime) {
+    if (!book_id || !book_name || !room || seat_number === undefined || !date || !start_time || !end_time) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
     const [conflicts] = await connection.execute(
       `SELECT * FROM bookings 
-       WHERE classroom = ? AND seatNumber = ? 
-         AND startTime = ?`,
-      [classroom, seatNumber, startTime]
+       WHERE room = ? AND seat_number = ? 
+         AND date = ? AND start_time = ?`,
+      [room, seat_number, date, start_time]
     );
 
     if (conflicts.length > 0) {
@@ -62,9 +62,9 @@ exports.createBooking = async (req, res) => {
     }
 
     const [result] = await connection.execute(
-      `INSERT INTO bookings (userId, classroom, seatNumber, startTime) 
-       VALUES (?, ?, ?, ?)`,
-      [userId, classroom, seatNumber, startTime]
+      `INSERT INTO bookings (room, seat_number, date, start_time, end_time, book_name, book_id, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
+      [room, seat_number, date, start_time, end_time, book_name, book_id]
     );
 
     const [newBooking] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
@@ -126,3 +126,19 @@ exports.deleteBooking = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+exports.getBookedSeats = (req, res) => {
+  const { room, date, start_time, end_time } = req.query;
+  const sql = `
+    SELECT seat_number FROM bookings 
+    WHERE room = ? 
+    AND date = ? 
+    AND status = 1 
+    AND start_time < ? 
+    AND end_time > ?
+  `;
+  db.query(sql, [room, date, end_time, start_time], (err, results) => {
+    if (err) return res.status(500).json({ message: err.message });
+    res.json(results);
+  });
+  };

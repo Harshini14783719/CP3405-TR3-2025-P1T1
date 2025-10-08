@@ -183,21 +183,6 @@ const Mine = () => {
                 }}>{userData.birthday}</span>
               </div>
 
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
-                <span style={{
-                  fontSize: '0.95rem',
-                  color: '#64748B',
-                  marginBottom: '0.3rem'
-                }}>Gender</span>
-                <span style={{
-                  fontSize: '1.1rem',
-                  color: '#1D2129',
-                  fontWeight: 500
-                }}>{userData.gender === 'male' ? 'Male' : 'Female'}</span>
-              </div>
             </div>
 
             <div style={{

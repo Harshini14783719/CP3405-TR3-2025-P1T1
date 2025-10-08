@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+
 const SignIn = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -7,12 +9,14 @@ const SignIn = () => {
     password: '',
     rememberMe: false
   });
+
   useEffect(() => {
     const savedEmail = localStorage.getItem('savedEmail');
     if (savedEmail) {
       setFormData(prev => ({ ...prev, email: savedEmail, rememberMe: true }));
     }
   }, []);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -20,32 +24,42 @@ const SignIn = () => {
       [name]: type === 'checkbox' ? checked : value
     }));
   };
+
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  const { email, password, rememberMe } = formData;
-  if (!email || !password) {
-    alert('Please fill in the form completely!');
-    return;
-  }
-  try {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await response.json();
-    if (data.success) {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('currentUser', JSON.stringify(data.user));
-      if (rememberMe) localStorage.setItem('savedEmail', email);
-      navigate('/', { replace: true });
-    } else {
-      alert(data.message);
+    e.preventDefault();
+    const { email, password, rememberMe } = formData;
+    
+    if (!email || !password) {
+      alert('Please fill in the form completely!');
+      return;
     }
-  } catch (err) {
-    alert('Login failed: Network error');
-  }
-};
+    
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+        if (rememberMe) localStorage.setItem('savedEmail', email);
+        
+        if (data.user.profileCompleted) {
+          navigate('/', { replace: true });
+        } else {
+          navigate(`/form?role=${data.user.role}`, { replace: true });
+        }
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      alert('Login failed: Network error');
+    }
+  };
+
   const styles = {
     signinContainer: {
       position: 'relative',
@@ -172,6 +186,7 @@ const SignIn = () => {
       marginLeft: '4px'
     }
   };
+
   return (
     <div style={styles.signinContainer}>
       <div style={styles.signinBg}></div>
@@ -184,6 +199,7 @@ const SignIn = () => {
           <input
             type="email"
             name="email"
+            autoComplete="username"
             value={formData.email}
             onChange={handleChange}
             placeholder="Enter your email"
@@ -191,7 +207,7 @@ const SignIn = () => {
             style={styles.formInput}
             onFocus={(e) => Object.assign(e.target.style, styles.formInputFocus)}
             onBlur={(e) => {
-              e.target.style.borderColor = '#D1D5DB';
+  e.target.style.border = '1px solid #D1D5DB';
               e.target.style.boxShadow = 'none';
             }}
           />
@@ -208,10 +224,10 @@ const SignIn = () => {
             style={styles.formInput}
             onFocus={(e) => Object.assign(e.target.style, styles.formInputFocus)}
             onBlur={(e) => {
-              e.target.style.borderColor = '#D1D5DB';
+  e.target.style.border = '1px solid #D1D5DB';
               e.target.style.boxShadow = 'none';
             }}
-            autocomplete="current-password"
+            autoComplete="current-password"
           />
         </div>
         
@@ -241,4 +257,5 @@ const SignIn = () => {
     </div>
   );
 };
+
 export default SignIn;

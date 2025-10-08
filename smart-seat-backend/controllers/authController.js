@@ -14,16 +14,15 @@ exports.register = async (req, res) => {
     return res.status(400).json({ success: false, message: 'All fields required' });
   }
 
+  let connection;
   try {
-    const connection = await mysql.createConnection(dbConfig);
-
+    connection = await mysql.createConnection(dbConfig);
     const [existing] = await connection.execute(
       'SELECT * FROM users WHERE email = ?',
       [email]
     );
 
     if (existing.length > 0) {
-      await connection.end();
       return res.status(400).json({ success: false, message: 'Email already exists' });
     }
 
@@ -32,46 +31,115 @@ exports.register = async (req, res) => {
       [email, password, role]
     );
 
-    const newUserId = result.insertId;
-
     const [users] = await connection.execute(
       'SELECT id, email, role FROM users WHERE id = ?',
-      [newUserId]
+      [result.insertId]
     );
-
-    await connection.end();
 
     res.json({ success: true, user: users[0] });
   } catch (err) {
-    console.error('Register failed:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Register error:', err.stack);
+    res.status(500).json({ success: false, message: 'Registration failed' });
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
   }
 };
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password ) {
+  if (!email || !password) {
     return res.status(400).json({ success: false, message: 'Email and password required' });
   }
 
+  let connection;
   try {
-    const connection = await mysql.createConnection(dbConfig);
-
+    connection = await mysql.createConnection(dbConfig);
     const [users] = await connection.execute(
-      'SELECT id, email, role FROM users WHERE email = ? AND password = ? ',
+      'SELECT id, email, role, name FROM users WHERE email = ? AND password = ?',
       [email, password]
     );
-
-    await connection.end();
 
     if (users.length === 0) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    res.json({ success: true, user: { id: users[0].id, email: users[0].email }});
+    const user = users[0];
+    res.json({ 
+      success: true, 
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role,
+        profileCompleted: !!user.name 
+      } 
+    });
   } catch (err) {
-    console.error('Login failed:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error('Login error:', err.stack);
+    res.status(500).json({ success: false, message: 'Login failed' });
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
+};
+
+exports.profile = async (req, res) => {
+  const { email, name, jcu_id, gender, birthday, major, role } = req.body;
+
+  if (!email || !name || !jcu_id || !gender || !birthday) {
+    return res.status(400).json({ success: false, message: 'All required fields must be provided' });
+  }
+
+  let connection;
+  try {
+    connection = await mysql.createConnection(dbConfig);
+    const [existing] = await connection.execute(
+      'SELECT * FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    await connection.execute(
+      `UPDATE users SET name = ?, jcu_id = ?, gender = ?, birthday = ?, 
+       major = ?, role = ? WHERE email = ?`,
+      [name, jcu_id, gender, birthday, major || null, role, email]
+    );
+
+    const [updatedUsers] = await connection.execute(
+      'SELECT id, email, role, name FROM users WHERE email = ?',
+      [email]
+    );
+
+    res.json({ 
+      success: true, 
+      user: {
+        id: updatedUsers[0].id,
+        email: updatedUsers[0].email,
+        role: updatedUsers[0].role,
+        profileCompleted: true
+      } 
+    });
+  } catch (err) {
+    console.error('Profile update error:', err.stack);
+    res.status(500).json({ success: false, message: 'Profile update failed' });
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    res.json({ success: true, message: 'Logout successful' });
+  } catch (err) {
+    console.error('Logout error:', err.stack);
+    res.status(500).json({ success: false, message: 'Logout failed' });
   }
 };

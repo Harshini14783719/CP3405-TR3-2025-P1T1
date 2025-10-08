@@ -16,48 +16,31 @@ exports.getClassroomWithSeats = async (req, res) => {
 
     if (!date) date = new Date().toISOString().split('T')[0];
     
-    const startTime = `${date}T${hour.toString().padStart(2, '0')}:00`;
+    const start_time = `${hour.toString().padStart(2, '0')}:00`;
+    const room = classroom;
 
     const connection = await mysql.createConnection(dbConfig);
 
-    const [classrooms] = await connection.execute(
-      'SELECT id, name, type, totalSeats FROM classrooms WHERE name = ?',
-      [classroom]
-    );
-
-    if (classrooms.length === 0) {
-      await connection.end();
-      return res.status(404).json({ message: 'Classroom not found' });
-    }
-
-    const classroomData = classrooms[0];
-    const seats = {};
-
     const sql = `
-      SELECT b.seatNumber, u.id AS userId, u.name AS userName
+      SELECT b.seat_number, b.book_id, b.book_name
       FROM bookings b
-      LEFT JOIN users u ON b.userId = u.id
-      WHERE b.classroom = ? AND b.startTime = ?
+      WHERE b.room = ? AND b.date = ? AND b.start_time = ?
     `;
-    const params = [classroom, startTime];
+    const params = [room, date, start_time];
 
     const [bookings] = await connection.execute(sql, params);
 
+    const seats = {};
     bookings.forEach(b => {
-      seats[b.seatNumber] = { userId: b.userId, userName: b.userName };
+      seats[b.seat_number] = { userId: b.book_id, userName: b.book_name };
     });
 
     await connection.end();
 
     res.json({
-      classroom: {
-        id: classroomData.id,
-        name: classroomData.name,
-        type: classroomData.type,
-        totalSeats: classroomData.totalSeats,
-      },
       seats,
-      startTime
+      start_time,
+      date
     });
   } catch (error) {
     console.error('Error fetching classroom:', error);

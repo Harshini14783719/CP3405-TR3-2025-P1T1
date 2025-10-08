@@ -14,6 +14,20 @@ const Seat = () => {
   const [endTime, setEndTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+  const [userInfo, setUserInfo] = useState({ id: 1, name: 'User' });
+
+  const getRoomIdentifier = () => {
+    switch (location) {
+      case 'classroom':
+        return classroomRoom;
+      case 'canteen':
+        return 'canteen';
+      case 'library':
+        return `library-${libraryFloor}`;
+      default:
+        return '';
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -68,24 +82,32 @@ const Seat = () => {
   };
 
   const fetchBookedSeats = useCallback(async () => {
-    if (location !== 'classroom' || !classroomRoom || !selectedDate || !selectedHour) return;
+    const room = getRoomIdentifier();
+    if (!room || !selectedDate || !selectedHour) return;
     
     setLoading(true);
     try {
-      const response = await axios.get('/api/classrooms/getClassroomWithSeats', {
+      const response = await axios.get('/bookings/getBookedSeats', {
         params: {
-          classroom: classroomRoom,
+          room,
           date: selectedDate,
-          hour: selectedHour
+          start_time: `${selectedHour}:00`,
+          end_time: `${endTime}:00`,
+          status: 1
         }
       });
-      setBookedSeats(response.data.seats || {});
+      
+      const booked = {};
+      response.data.forEach(item => {
+        booked[item.seat_number] = true;
+      });
+      setBookedSeats(booked);
     } catch (error) {
       console.error('Error fetching booked seats:', error);
     } finally {
       setLoading(false);
     }
-  }, [location, classroomRoom, selectedDate, selectedHour]);
+  }, [selectedDate, selectedHour, endTime, getRoomIdentifier]);
 
   useEffect(() => {
     if (selectedHour) {
@@ -97,10 +119,10 @@ const Seat = () => {
   }, [selectedHour]);
 
   useEffect(() => {
-    if (selectedDate && selectedHour && classroomRoom && location === 'classroom') {
+    if (selectedDate && selectedHour && getRoomIdentifier()) {
       fetchBookedSeats();
     }
-  }, [selectedDate, selectedHour, classroomRoom, location, fetchBookedSeats]);
+  }, [selectedDate, selectedHour, getRoomIdentifier, fetchBookedSeats]);
 
   const toggleSeat = (seatNumber) => {
     if (bookedSeats[seatNumber]) return;
@@ -113,17 +135,23 @@ const Seat = () => {
   };
 
   const handleBooking = async () => {
-    if (selectedSeats.length === 0 || !selectedDate || !selectedHour || !classroomRoom) return;
+    if (selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier()) return;
 
-    const startTime = `${selectedDate}T${selectedHour}:00`;
+    const start_time = `${selectedHour}:00`;
+    const end_time = `${endTime}:00`;
+    const room = getRoomIdentifier();
     
     try {
-      for (const seatNumber of selectedSeats) {
-        await axios.post('/api/bookings', {
-          userId: 1,
-          classroom: classroomRoom,
-          seatNumber,
-          startTime
+      for (const seat_number of selectedSeats) {
+        await axios.post('/bookings', {
+          book_id: userInfo.id,
+          book_name: userInfo.name,
+          room,
+          seat_number,
+          date: selectedDate,
+          start_time,
+          end_time,
+          status: 1
         });
       }
       alert('Booking successful!');
@@ -476,7 +504,7 @@ const Seat = () => {
   };
 
   const renderSeatMap = () => {
-    if (loading) return <div>Loading seats...</div>;
+    if (loading) return <div>Loading seat map...</div>;
     
     if (location === 'canteen' && selectedDate && selectedHour) {
       return renderCanteenSeats();
@@ -574,13 +602,14 @@ const Seat = () => {
   opacity: 0.8;
 }
 
-.time-picker-group {
-  display: flex;
-  gap: 1rem;
-}
-
-.time-picker-group .form-group {
-  flex: 1;
+.end-time-display {
+  margin-top: 0.5rem;
+  padding: 0.85rem 1rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #64748b;
+  font-size: 1rem;
 }
 
 .booking-button {
@@ -990,44 +1019,39 @@ const Seat = () => {
             </>
           )}
           
-          <div className="time-picker-group">
-            <div className="form-group">
-              <label>Date</label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="form-control"
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Start Time (Hour)</label>
-              <select
-                value={selectedHour}
-                onChange={(e) => setSelectedHour(e.target.value)}
-                className="form-control"
-              >
-                <option value="">Select hour</option>
-                {[...Array(24).keys()].map(hour => (
-                  <option key={hour} value={hour.toString().padStart(2, '0')}>
-                    {hour}:00
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="form-group">
+            <label>Date</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="form-control"
+              min={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+          
+          <div className="form-group">
+            <label>Start Time (Hour)</label>
+            <select
+              value={selectedHour}
+              onChange={(e) => setSelectedHour(e.target.value)}
+              className="form-control"
+            >
+              <option value="">Select hour</option>
+              {[...Array(24).keys()].map(hour => (
+                <option key={hour} value={hour.toString().padStart(2, '0')}>
+                  {hour}:00
+                </option>
+              ))}
+            </select>
           </div>
           
           {selectedHour && (
             <div className="form-group">
               <label>End Time</label>
-              <input
-                type="text"
-                value={`${endTime}:00`}
-                readOnly
-                className="form-control"
-              />
+              <div className="end-time-display">
+                {`${endTime}:00`}
+              </div>
             </div>
           )}
           
@@ -1063,7 +1087,7 @@ const Seat = () => {
             <button
               className="booking-button"
               onClick={handleBooking}
-              disabled={selectedSeats.length === 0 || !selectedDate || !selectedHour || !classroomRoom || loading}
+              disabled={selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier() || loading}
             >
               Confirm Booking
             </button>

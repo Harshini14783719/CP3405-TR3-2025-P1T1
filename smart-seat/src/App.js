@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Routes, Route, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import Home from './home';
 import Seat from './seat';
 import Mine from './mine';
 import SignIn from './signin';
 import SignUp from './signup';
-
-axios.defaults.baseURL = 'http://localhost:5000/api';
+import Form from './form';
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -21,18 +20,18 @@ function App() {
   const navigate = useNavigate();
 
   const PrivateRoute = ({ element }) => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  return isLoggedIn ? element : <Navigate to="/signin" replace />;
-};
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    return isLoggedIn ? element : <Navigate to="/signin" replace />;
+  };
 
   useEffect(() => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    console.log('登录状态:', isLoggedIn);
-  const currentUser = localStorage.getItem('currentUser');
-  if (isLoggedIn && currentUser) {
-    setUserInfo(JSON.parse(currentUser));
-  }
-}, []);
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    console.log('Login status:', isLoggedIn);
+    const currentUser = localStorage.getItem('currentUser');
+    if (isLoggedIn && currentUser) {
+      setUserInfo(JSON.parse(currentUser));
+    }
+  }, []);
 
   useEffect(() => {
     const path = location.pathname === '/' ? 'home' : location.pathname.replace('/home', '');
@@ -52,6 +51,7 @@ function App() {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -59,7 +59,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await axios.post('/auth/logout');
+      await axios.post('/api/auth/logout');
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
@@ -159,7 +159,6 @@ function App() {
       backgroundColor: '#165DFF',
       borderRadius: '2px',
       transition: 'width 0.3s ease',
-
     },
     seatContainer: {
       position: 'relative'
@@ -223,7 +222,7 @@ function App() {
 
   return (
     <div style={styles.appContainer}>
-      {!['/signin', '/signup'].includes(location.pathname) && (
+      {!['/signin', '/signup', '/form'].includes(location.pathname) && (
         <nav style={styles.navbar}>
           <div style={styles.navbarLeft}>
             <div style={styles.logo}>
@@ -231,6 +230,7 @@ function App() {
               <span style={styles.logoText}>Smart Seat</span>
             </div>
           </div>
+
           
           <div style={styles.navLinks}>
             <NavLink 
@@ -276,6 +276,7 @@ function App() {
                     width: getUnderlineWidth('seat')
                   }}
                 ></span>
+
               </div>
               
               {seatMenuOpen && (
@@ -318,6 +319,7 @@ function App() {
               ></span>
             </NavLink>
           </div>
+
           
           <div 
             ref={profileRef}
@@ -355,15 +357,16 @@ function App() {
         </nav>
       )}
       
- <Routes>
-  <Route path="/signin" element={<SignIn />} />
-  <Route path="/signup" element={<SignUp />} />
-  <Route path="/" element={<PrivateRoute element={<Home />} />} />
-  <Route path="/seat" element={<PrivateRoute element={<Seat />} />} />
-  <Route path="/seat/records" element={<PrivateRoute element={<div>Booking Records</div>} />} />
-  <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
-  <Route path="*" element={<Navigate to="/" replace />} />
-</Routes>
+      <Routes>
+        <Route path="/signin" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/form" element={<PrivateRoute element={<Form />} />} />
+        <Route path="/" element={<PrivateRoute element={<Home />} />} />
+        <Route path="/seat" element={<PrivateRoute element={<Seat />} />} />
+        <Route path="/seat/records" element={<PrivateRoute element={<div>Booking Records</div>} />} />
+        <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }
