@@ -14,6 +14,7 @@ function App() {
   const [seatMenuOpen, setSeatMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
+  const [seatSubItemHover, setSeatSubItemHover] = useState('');
   const seatRef = useRef(null);
   const profileRef = useRef(null);
   const location = useLocation();
@@ -41,12 +42,15 @@ function App() {
     } else if (path === '/mine') {
       setActiveTab('mine');
     }
+    setHoveredTab('');
+    setSeatSubItemHover('');
   }, [location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (seatRef.current && !seatRef.current.contains(event.target)) {
         setSeatMenuOpen(false);
+        setSeatSubItemHover('');
       }
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setProfileMenuOpen(false);
@@ -86,6 +90,7 @@ function App() {
 
   const handleSeatBooking = () => {
     setSeatMenuOpen(false);
+    setActiveTab('seat');
     navigate('/seat');
   };
 
@@ -180,22 +185,27 @@ function App() {
       marginTop: '0px',
       backgroundColor: 'white',
       borderRadius: '8px',
-      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.05)',
       padding: '8px 0',
-      minWidth: '180px',
-      zIndex: 1000
+      minWidth: '200px',
+      zIndex: 1000,
+      border: '1px solid rgba(0, 0, 0, 0.08)',
+      overflow: 'hidden'
     },
     dropdownItem: {
-      padding: '10px 16px',
+      padding: '12px 20px',
       color: '#4E5969',
       textDecoration: 'none',
       display: 'block',
       fontSize: '14px',
-      transition: 'background-color 0.2s ease',
-      cursor: 'pointer'
+      transition: 'all 0.2s ease',
+      cursor: 'pointer',
+      position: 'relative'
     },
     dropdownItemHover: {
-      backgroundColor: '#F2F3F5'
+      backgroundColor: '#F0F5FF',
+      color: '#165DFF',
+      paddingLeft: '24px'
     },
     profileContainer: {
       position: 'relative',
@@ -213,7 +223,12 @@ function App() {
       color: '#1D2129',
       fontWeight: 600,
       overflow: 'hidden',
-      boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)'
+      boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)',
+      transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+    },
+    profileImageHover: {
+      transform: 'scale(1.05)',
+      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)'
     },
     profileMenu: {
       position: 'absolute',
@@ -222,10 +237,11 @@ function App() {
       marginTop: '0px',
       backgroundColor: 'white',
       borderRadius: '8px',
-      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.05)',
       padding: '8px 0',
-      minWidth: '180px',
-      zIndex: 1000
+      minWidth: '200px',
+      zIndex: 1000,
+      border: '1px solid rgba(0, 0, 0, 0.08)'
     }
   };
 
@@ -268,6 +284,7 @@ function App() {
               onMouseLeave={() => {
                 setSeatMenuOpen(false);
                 setHoveredTab('');
+                setSeatSubItemHover('');
               }}
             >
               <div 
@@ -291,21 +308,34 @@ function App() {
               {seatMenuOpen && (
                 <div 
                   style={styles.dropdownMenu}
-                  onMouseLeave={() => setSeatMenuOpen(false)}
+                  onMouseLeave={() => {
+                    setSeatMenuOpen(false);
+                    setSeatSubItemHover('');
+                  }}
                 >
                   <div 
-                    style={styles.dropdownItem}
+                    style={{ 
+                      ...styles.dropdownItem,
+                      ...(seatSubItemHover === 'booking' || location.pathname === '/seat' ? styles.dropdownItemHover : {})
+                    }}
                     onClick={handleSeatBooking}
+                    onMouseEnter={() => setSeatSubItemHover('booking')}
+                    onMouseLeave={() => setSeatSubItemHover('')}
                   >
                     Book a Seat
                   </div>
                   <div 
-                    style={styles.dropdownItem}
+                    style={{ 
+                      ...styles.dropdownItem,
+                      ...(seatSubItemHover === 'records' || location.pathname === '/seat/records' ? styles.dropdownItemHover : {})
+                    }}
                     onClick={() => {
                       setSeatMenuOpen(false);
                       setActiveTab('seat');
                       navigate('/seat/records');
                     }}
+                    onMouseEnter={() => setSeatSubItemHover('records')}
+                    onMouseLeave={() => setSeatSubItemHover('')}
                   >
                     Booking Records
                   </div>
@@ -334,11 +364,16 @@ function App() {
           <div 
             ref={profileRef}
             style={styles.profileContainer}
-            onMouseEnter={() => setProfileMenuOpen(true)}
+            onMouseEnter={() => {
+              setProfileMenuOpen(true);
+            }}
             onMouseLeave={() => setProfileMenuOpen(false)}
           >
             <div 
-              style={styles.profileImage}
+              style={{ 
+                ...styles.profileImage,
+                ...(profileMenuOpen ? styles.profileImageHover : {})
+              }}
               onClick={goToMine}
             >
               {userInfo?.email?.charAt(0).toUpperCase() || localStorage.getItem('savedEmail')?.charAt(0).toUpperCase() || 'U'}

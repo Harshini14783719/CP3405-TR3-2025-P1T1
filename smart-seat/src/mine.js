@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -33,6 +33,7 @@ const Mine = () => {
     confirmNewPassword: '',
     showPasswordForm: false
   });
+  const initialModalCheck = useRef(true);
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -41,9 +42,12 @@ const Mine = () => {
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('edit') === 'true') {
-      setIsEditModalOpen(true);
+    if (initialModalCheck.current) {
+      const params = new URLSearchParams(location.search);
+      if (params.get('edit') === 'true') {
+        setIsEditModalOpen(true);
+      }
+      initialModalCheck.current = false;
     }
   }, [location.search]);
 
@@ -139,6 +143,7 @@ const Mine = () => {
         showPasswordForm: false
       }));
       setIsEditModalOpen(false);
+      navigate('/mine', { replace: true });
       alert('Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -609,6 +614,7 @@ const Mine = () => {
                     confirmNewPassword: '',
                     showPasswordForm: false
                   }));
+                navigate('/mine', { replace: true });
                 }}
                 style={{
                   padding: '0.6rem 1.2rem',
