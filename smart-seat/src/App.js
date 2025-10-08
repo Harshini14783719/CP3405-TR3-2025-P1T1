@@ -8,7 +8,7 @@ import SignIn from './signin';
 import SignUp from './signup';
 import Form from './form';
 import SeatRecords from './seat-records';
-
+import LecClass from './lec-class';
 function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [hoveredTab, setHoveredTab] = useState('');
@@ -20,12 +20,13 @@ function App() {
   const profileRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
-
-  const PrivateRoute = ({ element }) => {
+  const PrivateRoute = ({ element, requireLecturer = false }) => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    return isLoggedIn ? element : <Navigate to="/signin" replace />;
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!isLoggedIn) return <Navigate to="/signin" replace />;
+    if (requireLecturer && currentUser?.role !== 'lecturer') return <Navigate to="/mine" replace />;
+    return element;
   };
-
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const currentUser = localStorage.getItem('currentUser');
@@ -33,20 +34,18 @@ function App() {
       setUserInfo(JSON.parse(currentUser));
     }
   }, []);
-
   useEffect(() => {
     let path = location.pathname;
     if (path === '/') {
       setActiveTab('home');
-    } else if (path.startsWith('/seat')) {
+    } else if (path.startsWith('/seat') || path === '/lec-class') {
       setActiveTab('seat');
     } else if (path === '/mine') {
       setActiveTab('mine');
     }
     setHoveredTab('');
     setSeatSubItemHover('');
-  }, [location.pathname]);
-
+  }, [location.pathname, userInfo]);
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (seatRef.current && !seatRef.current.contains(event.target)) {
@@ -57,13 +56,33 @@ function App() {
         setProfileMenuOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    if (isLoggedIn) {
+      const syncUserInfo = async () => {
+        try {
+          const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+          const response = await fetch('/api/users/me', {
+            headers: { 'user-id': currentUser.id }
+          });
+          const userData = await response.json();
+          localStorage.setItem('currentUser', JSON.stringify(userData));
+          setUserInfo(userData);
+        } catch (err) {
+          console.error('Failed to sync user info:', err);
+        }
+      };
 
+      syncUserInfo();
+      const interval = setInterval(syncUserInfo, 300000);
+      return () => clearInterval(interval);
+    }
+  }, []);
   const handleLogout = async () => {
     try {
       await axios.post('/api/auth/logout');
@@ -78,30 +97,25 @@ function App() {
       navigate('/signin', { replace: true });
     }
   };
-
   const handleEditProfile = () => {
     setProfileMenuOpen(false);
     navigate('/mine?edit=true');
   };
-
   const goToMine = () => {
     setProfileMenuOpen(false);
     navigate('/mine');
   };
-
   const handleSeatBooking = () => {
     setSeatMenuOpen(false);
     setActiveTab('seat');
     navigate('/seat');
   };
-
   const getUnderlineWidth = (tab) => {
     if (activeTab === tab || hoveredTab === tab || (tab === 'seat' && seatMenuOpen)) {
       return '120%';
     }
     return '0';
   };
-
   const styles = {
     appContainer: {
       margin: 0,
@@ -245,7 +259,6 @@ function App() {
       border: '1px solid rgba(0, 0, 0, 0.08)'
     }
   };
-
   return (
     <div style={styles.appContainer}>
       {!['/signin', '/signup', '/form'].includes(location.pathname) && (
@@ -256,7 +269,6 @@ function App() {
               <span style={styles.logoText}>Smart Seat</span>
             </div>
           </div>
-
           
           <div style={styles.navLinks}>
             <NavLink 
@@ -303,7 +315,6 @@ function App() {
                     width: getUnderlineWidth('seat')
                   }}
                 ></span>
-
               </div>
               
               {seatMenuOpen && (
@@ -340,6 +351,23 @@ function App() {
                   >
                     Booking Records
                   </div>
+                  {userInfo?.role === 'lecturer' && (
+                    <div 
+                      style={{ 
+                        ...styles.dropdownItem,
+                        ...(seatSubItemHover === 'tutorView' || location.pathname === '/lec-class' ? styles.dropdownItemHover : {})
+                      }}
+                      onClick={() => {
+                        setSeatMenuOpen(false);
+                        setActiveTab('seat');
+                        navigate('/lec-class');
+                      }}
+                      onMouseEnter={() => setSeatSubItemHover('tutorView')}
+                      onMouseLeave={() => setSeatSubItemHover('')}
+                    >
+                      Tutor View
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -360,7 +388,6 @@ function App() {
               ></span>
             </NavLink>
           </div>
-
           
           <div 
             ref={profileRef}
@@ -414,10 +441,10 @@ function App() {
         <Route path="/seat" element={<PrivateRoute element={<Seat />} />} />
         <Route path="/seat-records" element={<PrivateRoute element={<SeatRecords />} />} />
         <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
+        <Route path="/lec-class" element={<PrivateRoute element={<LecClass />} requireLecturer={true} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   );
 }
-
 export default App;

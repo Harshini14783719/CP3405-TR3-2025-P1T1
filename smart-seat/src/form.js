@@ -71,8 +71,17 @@ const Form = () => {
       
       const data = await response.json();
       if (data.success) {
+        try {
+          const userResponse = await fetch('/api/users/me', {
+            headers: { 'user-id': data.user.id }
+          });
+          const userData = await userResponse.json();
+          localStorage.setItem('currentUser', JSON.stringify(userData));
+        } catch (err) {
+          console.error('Failed to fetch full user info:', err);
+          localStorage.setItem('currentUser', JSON.stringify(data.user));
+        }
         localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('currentUser', JSON.stringify(data.user));
         navigate('/', { replace: true });
       } else {
         alert(data.message);

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-
 const SeatRecords = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [bookings, setBookings] = useState([]);
@@ -22,7 +21,7 @@ const SeatRecords = () => {
           headers: { 'user-id': userId }
         });
         setUserInfo(userResponse.data);
-
+        
         const bookingsResponse = await axios.get(`/api/bookings?userId=${userId}`);
         const sortedBookings = bookingsResponse.data.sort((a, b) => {
           const timeA = new Date(`${a.date} ${a.start_time}`).getTime();
@@ -243,5 +242,4 @@ const SeatRecords = () => {
     </div>
   );
 };
-
 export default SeatRecords;

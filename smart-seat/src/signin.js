@@ -44,8 +44,18 @@ const SignIn = () => {
       const data = await response.json();
       if (data.success) {
         localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('currentUser', JSON.stringify(data.user));
         if (rememberMe) localStorage.setItem('savedEmail', email);
+        
+        try {
+          const userResponse = await fetch('/api/users/me', {
+            headers: { 'user-id': data.user.id }
+          });
+          const userData = await userResponse.json();
+          localStorage.setItem('currentUser', JSON.stringify(userData));
+        } catch (err) {
+          console.error('Failed to fetch full user info:', err);
+          localStorage.setItem('currentUser', JSON.stringify(data.user));
+        }
         
         if (data.user.profileCompleted) {
           navigate('/', { replace: true });

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-
 const Seat = () => {
   const [location, setLocation] = useState('');
   const [libraryFloor, setLibraryFloor] = useState('');
@@ -14,7 +13,14 @@ const Seat = () => {
   const [endTime, setEndTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [scrollY, setScrollY] = useState(0);
-  const [userInfo, setUserInfo] = useState({ id: 1, name: 'User' });
+  const [userInfo, setUserInfo] = useState({ id: '', name: '' });
+
+  useEffect(() => {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (currentUser) {
+      setUserInfo({ id: currentUser.id, name: currentUser.name });
+    }
+  }, []);
 
   const getRoomIdentifier = useCallback(() => {
     switch (location) {
@@ -33,7 +39,6 @@ const Seat = () => {
     const handleScroll = () => {
       setScrollY(window.scrollY);
     };
-    
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -71,20 +76,16 @@ const Seat = () => {
 
   const generateClassroomRooms = () => {
     if (!classroomBuilding || !classroomFloor) return [];
-    
     let validRooms = [...Array(7).keys()].map(i => (i + 1).toString().padStart(2, '0'));
-    
     if (classroomBuilding === 'C' && classroomFloor !== '1') {
       validRooms = validRooms.concat([13, 14, 15].map(num => num.toString()));
     }
-    
     return validRooms.map(room => `${classroomBuilding}${classroomFloor}-${room}`);
   };
 
   const fetchBookedSeats = useCallback(async () => {
     const room = getRoomIdentifier();
     if (!room || !selectedDate || !selectedHour || !endTime) return;
-    
     setLoading(true);
     try {
       const response = await axios.get('/api/bookings/getBookedSeats', {
@@ -95,7 +96,6 @@ const Seat = () => {
           end_time: `${endTime}:00`
         }
       });
-      
       const booked = {};
       response.data.forEach(item => {
         booked[item.seat_number] = true;
@@ -125,7 +125,6 @@ const Seat = () => {
 
   const toggleSeat = (seatNumber) => {
     if (bookedSeats[seatNumber]) return;
-    
     setSelectedSeats(prev => 
       prev.includes(seatNumber)
         ? prev.filter(num => num !== seatNumber)
@@ -135,11 +134,9 @@ const Seat = () => {
 
   const handleBooking = async () => {
     if (selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier()) return;
-
     const start_time = `${selectedHour}:00`;
     const end_time = `${endTime}:00`;
     const room = getRoomIdentifier();
-    
     try {
       for (const seat_number of selectedSeats) {
         await axios.post('/api/bookings', {
@@ -166,7 +163,6 @@ const Seat = () => {
     const columns = 3;
     const tablesPerColumn = 5;
     const seatsPerTable = 3;
-    
     return (
       <div className="canteen-layout">
         {[...Array(columns)].map((_, colIndex) => (
@@ -217,7 +213,6 @@ const Seat = () => {
     const columns = 2;
     const tablesPerColumn = libraryFloor === '1' ? 4 : 8;
     const seatsPerTable = 4;
-    
     return (
       <div className="library-layout">
         {[...Array(columns)].map((_, colIndex) => (
@@ -267,7 +262,6 @@ const Seat = () => {
   const renderClassroomType1 = () => {
     const roomNum = classroomRoom.split('-')[1];
     const is01To07 = roomNum && parseInt(roomNum, 10) >= 1 && parseInt(roomNum, 10) <= 7;
-    
     return (
       <div className={`classroom-type1 ${is01To07 ? 'classroom-01-07' : ''}`}>
         <div className="left-wall-table table horizontal-table">
@@ -296,7 +290,6 @@ const Seat = () => {
             ))}
           </div>
         </div>
-
         <div className="right-wall-table table horizontal-table">
           <div className="table-seats top-seats">
             {[7, 8, 9].map(seatNum => (
@@ -323,7 +316,6 @@ const Seat = () => {
             ))}
           </div>
         </div>
-
         <div className="front-wall-tables">
           {[2, 1, 3].map(tableNum => (
             <div key={`front-table-${tableNum}`} className="table vertical-table">
@@ -382,7 +374,6 @@ const Seat = () => {
             </div>
           ))}
         </div>
-
         <div className="back-wall-tables">
           {[2, 1, 3].map(tableNum => (
             <div key={`back-table-${tableNum}`} className="table vertical-table">
@@ -449,7 +440,6 @@ const Seat = () => {
     const rows = 10;
     const seatsPerSide = 7;
     const totalSeatsPerRow = seatsPerSide * 2;
-    
     return (
       <div className="classroom-type2">
         <div className="staircase-area"></div>
@@ -458,7 +448,6 @@ const Seat = () => {
             const rowNum = rowIndex + 1;
             const rowBaseNum = rowIndex * totalSeatsPerRow;
             const isStaircaseRow = rowNum <= 5;
-            
             return (
               <div 
                 key={`row-${rowNum}`} 
@@ -504,7 +493,6 @@ const Seat = () => {
 
   const renderSeatMap = () => {
     if (loading) return <div>Loading seat map...</div>;
-    
     if (location === 'canteen' && selectedDate && selectedHour) {
       return renderCanteenSeats();
     } else if (location === 'library' && libraryFloor && selectedDate && selectedHour) {
@@ -530,7 +518,6 @@ const Seat = () => {
   min-height: 100vh;
   margin-top: 45px;
 }
-
 .seat-notification {
   position: fixed;
   top: 80px;
@@ -544,32 +531,27 @@ const Seat = () => {
   z-index: 101;
   transition: top 0.04s ease;
 }
-
 .seat-sidebar {
   width: 28%;
   background-color: #ffffff;
   padding: 2.5rem;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
 }
-
 .seat-main {
   width: 72%;
   padding: 2.5rem;
   background-color: #f8fafc;
   overflow: auto;
 }
-
 .seat-sidebar h2 {
   color: #0f172a;
   margin-bottom: 2rem;
   font-size: 1.5rem;
   font-weight: 700;
 }
-
 .form-group {
   margin-bottom: 1.8rem;
 }
-
 .form-group label {
   display: block;
   margin-bottom: 0.7rem;
@@ -577,7 +559,6 @@ const Seat = () => {
   color: #334155;
   font-size: 0.95rem;
 }
-
 .form-control {
   width: 100%;
   padding: 0.85rem 1rem;
@@ -588,19 +569,16 @@ const Seat = () => {
   background-color: #ffffff;
   transition: all 0.2s ease;
 }
-
 .form-control:focus {
   outline: none;
   border-color: #1e40af;
   box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.1);
 }
-
 .form-control:disabled {
   background-color: #f1f5f9;
   cursor: not-allowed;
   opacity: 0.8;
 }
-
 .end-time-display {
   margin-top: 0.5rem;
   padding: 0.85rem 1rem;
@@ -610,7 +588,6 @@ const Seat = () => {
   color: #64748b;
   font-size: 1rem;
 }
-
 .booking-button {
   background-color: #1e40af;
   color: white;
@@ -624,49 +601,41 @@ const Seat = () => {
   width: 100%;
   margin-top: 1rem;
 }
-
 .booking-button:disabled {
   background-color: #94a3b8;
   cursor: not-allowed;
 }
-
 .selection-summary {
   margin-top: 2.5rem;
   padding-top: 1.8rem;
   border-top: 1px solid #e2e8f0;
 }
-
 .selection-summary h3 {
   margin-bottom: 1.2rem;
   color: #0f172a;
   font-size: 1.1rem;
   font-weight: 600;
 }
-
 .selection-summary p {
   margin-bottom: 0.6rem;
   color: #334155;
   font-size: 0.95rem;
 }
-
 .selection-summary .selected-seats {
   margin-top: 1rem;
   padding: 1rem;
   background-color: #f1f5f9;
   border-radius: 6px;
 }
-
 .selection-summary .selected-seats p {
   margin-bottom: 0.3rem;
 }
-
 .seat-content h1 {
   color: #0f172a;
   margin-bottom: 2.2rem;
   font-size: 2rem;
   font-weight: 700;
 }
-
 .empty-state {
   display: flex;
   align-items: center;
@@ -681,14 +650,12 @@ const Seat = () => {
   text-align: center;
   padding: 2rem;
 }
-
 .location-view h2 {
   color: #1e40af;
   margin-bottom: 1.8rem;
   font-size: 1.4rem;
   font-weight: 600;
 }
-
 .seat-map {
   background-color: #ffffff;
   border-radius: 8px;
@@ -700,23 +667,19 @@ const Seat = () => {
   justify-content: center;
   overflow: auto;
 }
-
 .table {
   background-color: #e2e8f0;
   margin: 30px auto;
   position: relative;
 }
-
 .horizontal-table {
   width: 180px;
   height: 60px;
 }
-
 .vertical-table {
   width: 60px;
   height: 180px;
 }
-
 .seat {
   width: 30px;
   height: 30px;
@@ -731,34 +694,28 @@ const Seat = () => {
   transition: all 0.2s ease;
   margin: 0 8px;
 }
-
 .seat.selected {
   background-color: #1e40af;
 }
-
 .seat.booked {
   background-color: #ef4444;
   cursor: not-allowed;
 }
-
 .table-seats {
   display: flex;
   justify-content: center;
   position: absolute;
 }
-
 .top-seats {
   top: -40px;
   left: 0;
   right: 0;
 }
-
 .bottom-seats {
   bottom: -40px;
   left: 0;
   right: 0;
 }
-
 .left-seats {
   top: 0;
   bottom: 0;
@@ -767,7 +724,6 @@ const Seat = () => {
   justify-content: center;
   gap: 15px;
 }
-
 .right-seats {
   top: 0;
   bottom: 0;
@@ -776,35 +732,30 @@ const Seat = () => {
   justify-content: center;
   gap: 15px;
 }
-
 .canteen-layout {
   display: flex;
   width: 100%;
   justify-content: space-around;
   padding: 20px;
 }
-
 .canteen-column {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 40px;
 }
-
 .library-layout {
   display: flex;
   width: 100%;
   justify-content: space-around;
   padding: 20px;
 }
-
 .library-column {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 40px;
 }
-
 .classroom-type1 {
   position: relative;
   width: 1000px;
@@ -812,19 +763,15 @@ const Seat = () => {
   border: 1px solid #e2e8f0;
   padding: 60px;
 }
-
 .classroom-01-07 {
   width: 1200px;
 }
-
 .classroom-01-07 .left-wall-table {
   left: 0px;
 }
-
 .classroom-01-07 .right-wall-table {
   right: 0px;
 }
-
 .classroom-01-07 .front-wall-tables,
 .classroom-01-07 .back-wall-tables {
   left: 50%;
@@ -834,21 +781,18 @@ const Seat = () => {
   width: 600px;
   justify-content: center;
 }
-
 .left-wall-table {
   position: absolute;
   left: 60px;
   top: 50%;
   transform: translateY(-50%);
 }
-
 .right-wall-table {
   position: absolute;
   right: 60px;
   top: 50%;
   transform: translateY(-50%);
 }
-
 .front-wall-tables {
   position: absolute;
   top: 60px;
@@ -857,22 +801,19 @@ const Seat = () => {
   display: flex;
   gap: 100px;
 }
-
 .back-wall-tables {
   position: absolute;
-  bottom: 00px;
+  bottom: 0px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   gap: 100px;
 }
-
 .classroom-type2 {
   width: 900px;
   padding: 0px;
   position: relative;
 }
-
 .classroom-type2-rows {
   display: flex;
   flex-direction: column-reverse;
@@ -881,24 +822,20 @@ const Seat = () => {
   position: relative;
   z-index: 2;
 }
-
 .classroom-row {
   display: flex;
   justify-content: space-between;
   width: 100%;
   gap: 30px;
 }
-
 .seat-group {
   display: flex;
   gap: 0px;
 }
-
 .left-group, .right-group {
   display: flex;
   justify-content: center;
 }
-
 .staircase-area {
   position: absolute;
   top: 0;
@@ -908,24 +845,20 @@ const Seat = () => {
   background-color: #f1f5f9;
   z-index: 1;
 }
-
 .staircase-row {
   position: relative;
   z-index: 2;
 }
         `}
       </style>
-
       {selectedSeats.length > 0 && (
         <div className="seat-notification" style={{ top: scrollY >= 80 ? 0 : '80px' }}>
           <p>You have selected {selectedSeats.length} seat(s). Please confirm your reservation.</p>
         </div>
       )}
-
       <div className="seat-container">
         <div className="seat-sidebar">
           <h2>Select Location</h2>
-          
           <div className="form-group">
             <label>Location</label>
             <select 
@@ -939,7 +872,6 @@ const Seat = () => {
               <option value="library">Library</option>
             </select>
           </div>
-          
           {location === 'library' && (
             <div className="form-group">
               <label>Library Floor</label>
@@ -954,7 +886,6 @@ const Seat = () => {
               </select>
             </div>
           )}
-          
           {location === 'classroom' && (
             <>
               <div className="form-group">
@@ -971,7 +902,6 @@ const Seat = () => {
                   <option value="E">Building E</option>
                 </select>
               </div>
-              
               {classroomBuilding !== 'E' && (
                 <div className="form-group">
                   <label>Floor</label>
@@ -988,7 +918,6 @@ const Seat = () => {
                   </select>
                 </div>
               )}
-              
               {classroomBuilding === 'E' && (
                 <div className="form-group">
                   <label>Floor</label>
@@ -1000,7 +929,6 @@ const Seat = () => {
                   />
                 </div>
               )}
-              
               <div className="form-group">
                 <label>Room</label>
                 <select 
@@ -1017,7 +945,6 @@ const Seat = () => {
               </div>
             </>
           )}
-          
           <div className="form-group">
             <label>Date</label>
             <input
@@ -1028,7 +955,6 @@ const Seat = () => {
               min={new Date().toISOString().split('T')[0]}
             />
           </div>
-          
           <div className="form-group">
             <label>Start Time (Hour)</label>
             <select
@@ -1044,7 +970,6 @@ const Seat = () => {
               ))}
             </select>
           </div>
-          
           {selectedHour && (
             <div className="form-group">
               <label>End Time</label>
@@ -1053,15 +978,12 @@ const Seat = () => {
               </div>
             </div>
           )}
-          
           <div className="selection-summary">
             <h3>Selection Summary</h3>
             <p>Location: {location ? location.charAt(0).toUpperCase() + location.slice(1) : 'Not selected'}</p>
-            
             {location === 'library' && (
               <p>Floor: {libraryFloor ? `Floor ${libraryFloor}` : 'Not selected'}</p>
             )}
-            
             {location === 'classroom' && (
               <>
                 <p>Building: {classroomBuilding || 'Not selected'}</p>
@@ -1069,11 +991,9 @@ const Seat = () => {
                 <p>Room: {classroomRoom || 'Not selected'}</p>
               </>
             )}
-            
             {selectedDate && selectedHour && (
               <p>Time: {selectedDate} {selectedHour}:00 - {endTime}:00</p>
             )}
-            
             {selectedSeats.length > 0 && (
               <div className="selected-seats">
                 <h4>Selected Seats:</h4>
@@ -1082,7 +1002,6 @@ const Seat = () => {
                 ))}
               </div>
             )}
-            
             <button
               className="booking-button"
               onClick={handleBooking}
@@ -1092,11 +1011,9 @@ const Seat = () => {
             </button>
           </div>
         </div>
-        
         <div className="seat-main">
           <div className="seat-content">
             <h1>Seat Reservation</h1>
-            
             {!location ? (
               <div className="empty-state">
                 <p>Please select a location from the sidebar to view available seats</p>
@@ -1155,5 +1072,4 @@ const Seat = () => {
     </div>
   );
 };
-
 export default Seat;
