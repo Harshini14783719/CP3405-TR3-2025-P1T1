@@ -14,15 +14,10 @@ const Mine = () => {
     gender: '',
     avatar: '/user-avatar.png',
     major: '',
-    reservedSeats: 17,
-    checkInRate: '92%',
-    recentAppointment: {
-      dateTime: '2025-07-17 12:00',
-      classroom: 'C4-13',
-      seat: '37'
-    },
-    favoriteClassrooms: ['C3-04', 'C4-14', 'A2-11'],
-    favoriteSeats: ['Table2-06']
+    reservedSeats: 0,
+    checkInRate: '0%',
+    recentAppointment: {},
+    favoriteClassrooms: []
   });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editData, setEditData] = useState({
@@ -93,6 +88,71 @@ const Mine = () => {
       birthday: userData.birthday || ''
     }));
   }, [userData]);
+
+  useEffect(() => {
+    const fetchUserBookings = async () => {
+      if (!userData.id) return;
+      try {
+        const response = await axios.get('/api/bookings', {
+          params: { userId: userData.id }
+        });
+        const userBookings = response.data;
+
+        const validBookings = userBookings.filter(booking => [0, 1].includes(booking.status));
+        const reservedSeats = validBookings.length;
+
+        const checkedInCount = userBookings.filter(booking => booking.status === 1).length;
+        const totalCheckableCount = userBookings.filter(booking => [1, 3].includes(booking.status)).length;
+        const checkInRate = totalCheckableCount > 0 
+          ? `${Math.round((checkedInCount / totalCheckableCount) * 100)}%` 
+          : '0%';
+
+        const upcomingBookings = userBookings.filter(booking => booking.status === 0);
+        let recentAppointment = {};
+        if (upcomingBookings.length > 0) {
+          upcomingBookings.sort((a, b) => {
+            const dateTimeA = new Date(`${a.date} ${a.start_time}`);
+            const dateTimeB = new Date(`${b.date} ${b.start_time}`);
+            return dateTimeB - dateTimeA;
+          });
+          const latest = upcomingBookings[0];
+          recentAppointment = {
+            date: new Date(latest.date).toISOString().split('T')[0],
+            time: latest.start_time,
+            room: latest.room,
+            seat: latest.seat_number.toString()
+          };
+        }
+
+        const roomCount = {};
+        userBookings.forEach(booking => {
+          const room = booking.room;
+          roomCount[room] = (roomCount[room] || 0) + 1;
+        });
+        const favoriteRooms = [];
+        if (Object.keys(roomCount).length > 0) {
+          const maxCount = Math.max(...Object.values(roomCount));
+          for (const [room, count] of Object.entries(roomCount)) {
+            if (count === maxCount) {
+              favoriteRooms.push(room);
+            }
+          }
+        }
+
+        setUserData(prev => ({
+          ...prev,
+          reservedSeats,
+          checkInRate,
+          recentAppointment,
+          favoriteClassrooms: favoriteRooms
+        }));
+      } catch (error) {
+        console.error('Error fetching user bookings:', error);
+        alert('Failed to load booking information');
+      }
+    };
+    fetchUserBookings();
+  }, [userData.id]);
 
   const genderDotStyle = {
     width: '20px',
@@ -381,10 +441,12 @@ const Mine = () => {
                 color: '#475467',
                 margin: 0
               }}>
-                {userData.recentAppointment.dateTime} | Classroom {userData.recentAppointment.classroom} | Seat {userData.recentAppointment.seat}
+                {userData.recentAppointment.date 
+                  ? `${userData.recentAppointment.date} ${userData.recentAppointment.time} | Room ${userData.recentAppointment.room} | Seat ${userData.recentAppointment.seat}`
+                  : 'No upcoming appointments'}
               </p>
             </div>
-            <a href="/appointment-records" style={{
+            <a href="/seat-records" style={{
               fontSize: '0.95rem',
               color: '#165DFF',
               textDecoration: 'none',
@@ -408,8 +470,8 @@ const Mine = () => {
                 color: '#1D2129',
                 margin: 0,
                 fontWeight: 600
-              }}>My Favorite Classrooms</h3>
-              <a href="/favorite-classrooms" style={{
+              }}>My Favorite Rooms</h3>
+              <a href="/seat-records" style={{
                 fontSize: '0.95rem',
                 color: '#165DFF',
                 textDecoration: 'none',
@@ -421,16 +483,22 @@ const Mine = () => {
               gap: '1.5rem',
               flexWrap: 'wrap'
             }}>
-              {userData.favoriteClassrooms.map((classroom, index) => (
-                <span key={index} style={{
-                  backgroundColor: '#F0F5FF',
-                  color: '#165DFF',
-                  borderRadius: '4px',
-                  padding: '0.5rem 1rem',
-                  fontSize: '0.95rem',
-                  fontWeight: 500
-                }}>{classroom}</span>
-              ))}
+              {userData.favoriteClassrooms.length > 0 
+                ? userData.favoriteClassrooms.map((room, index) => (
+                    <span key={index} style={{
+                      backgroundColor: '#F0F5FF',
+                      color: '#165DFF',
+                      borderRadius: '4px',
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.95rem',
+                      fontWeight: 500
+                    }}>{room}</span>
+                  ))
+                : <span style={{
+                    fontSize: '0.95rem',
+                    color: '#64748B'
+                  }}>No favorite rooms yet</span>
+              }
             </div>
           </div>
         </div>
@@ -614,7 +682,7 @@ const Mine = () => {
                     confirmNewPassword: '',
                     showPasswordForm: false
                   }));
-                navigate('/mine', { replace: true });
+                  navigate('/mine', { replace: true });
                 }}
                 style={{
                   padding: '0.6rem 1.2rem',

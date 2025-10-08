@@ -1,4 +1,5 @@
 const pool = require('../db/pool');
+
 exports.getAllBookings = async (req, res) => {
   let connection;
   try {
@@ -25,6 +26,7 @@ exports.getAllBookings = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
 exports.getBookingById = async (req, res) => {
   let connection;
   try {
@@ -43,6 +45,7 @@ exports.getBookingById = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
 exports.createbooking = async (req, res) => {
   let connection;
   try { 
@@ -74,6 +77,7 @@ exports.createbooking = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
 exports.updatebooking = async (req, res) => {
   let connection;
   try {
@@ -101,6 +105,7 @@ exports.updatebooking = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
 exports.deletebooking = async (req, res) => {
   let connection;
   try {
@@ -119,6 +124,7 @@ exports.deletebooking = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
 exports.getBookedSeats = async (req, res) => {
   let connection;
   try {
@@ -142,6 +148,7 @@ exports.getBookedSeats = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
 exports.cancelBooking = async (req, res) => {
   let connection;
   try {
@@ -159,6 +166,42 @@ exports.cancelBooking = async (req, res) => {
     res.json(updatedBooking[0]);
   } catch (error) {
     console.error('Error canceling booking:', error);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+exports.updateExpiredBookings = async (req, res) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: 'Missing userId' });
+    
+    const [expiredBookings] = await connection.execute(
+      'SELECT id FROM bookings WHERE book_id = ? AND status = 0 AND CONCAT(date, " ", start_time) < NOW()',
+      [userId]
+    );
+    
+    if (expiredBookings.length === 0) {
+      return res.json({ message: 'No expired bookings to update' });
+    }
+    
+    const ids = expiredBookings.map(booking => booking.id);
+    await connection.execute(
+      `UPDATE bookings SET status = 1 WHERE id IN (${ids.join(',')})`,
+      []
+    );
+    
+    const [updatedBookings] = await connection.execute(
+      'SELECT * FROM bookings WHERE id IN (?)',
+      [ids]
+    );
+    
+    res.json(updatedBookings);
+  } catch (error) {
+    console.error('Error updating expired bookings:', error);
     res.status(500).json({ message: 'Server error' });
   } finally {
     if (connection) connection.release();
