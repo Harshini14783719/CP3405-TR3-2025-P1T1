@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import Home from './home';
@@ -26,7 +26,6 @@ function App() {
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    console.log('Login status:', isLoggedIn);
     const currentUser = localStorage.getItem('currentUser');
     if (isLoggedIn && currentUser) {
       setUserInfo(JSON.parse(currentUser));
@@ -34,9 +33,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const path = location.pathname === '/' ? 'home' : location.pathname.replace('/home', '');
-    if (['home', 'seat', 'mine'].includes(path)) {
-      setActiveTab(path);
+    let path = location.pathname;
+    if (path === '/') {
+      setActiveTab('home');
+    } else if (path.startsWith('/seat')) {
+      setActiveTab('seat');
+    } else if (path === '/mine') {
+      setActiveTab('mine');
     }
   }, [location.pathname]);
 
@@ -51,7 +54,6 @@ function App() {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -65,12 +67,19 @@ function App() {
     } finally {
       localStorage.removeItem('token');
       localStorage.removeItem('savedEmail');
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('currentUser');
       setUserInfo(null);
       navigate('/signin', { replace: true });
     }
   };
 
   const handleEditProfile = () => {
+    setProfileMenuOpen(false);
+    navigate('/mine?edit=true');
+  };
+
+  const goToMine = () => {
     setProfileMenuOpen(false);
     navigate('/mine');
   };
@@ -294,6 +303,7 @@ function App() {
                     style={styles.dropdownItem}
                     onClick={() => {
                       setSeatMenuOpen(false);
+                      setActiveTab('seat');
                       navigate('/seat/records');
                     }}
                   >
@@ -327,7 +337,10 @@ function App() {
             onMouseEnter={() => setProfileMenuOpen(true)}
             onMouseLeave={() => setProfileMenuOpen(false)}
           >
-            <div style={styles.profileImage}>
+            <div 
+              style={styles.profileImage}
+              onClick={goToMine}
+            >
               {userInfo?.email?.charAt(0).toUpperCase() || localStorage.getItem('savedEmail')?.charAt(0).toUpperCase() || 'U'}
             </div>
             

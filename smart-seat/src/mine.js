@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Mine = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [userData, setUserData] = useState({
     id: '',
     name: '',
@@ -38,6 +39,13 @@ const Mine = () => {
     const date = new Date(dateString);
     return date.toISOString().split('T')[0];
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('edit') === 'true') {
+      setIsEditModalOpen(true);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const fetchUserData = async () => {
