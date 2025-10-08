@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const Mine = () => {
+  const navigate = useNavigate();
   const [userData, setUserData] = useState({
-    name: 'John Doe',
-    id: '123456',
-    birthday: '2025-01-01',
-    gender: 'male',
+    id: '',
+    name: '',
+    email: '',
+    jcu_id: '',
+    birthday: '',
+    gender: '',
     avatar: '/user-avatar.png',
-    major: 'Information Technology',
+    major: '',
     reservedSeats: 17,
     checkInRate: '92%',
     recentAppointment: {
@@ -21,19 +25,61 @@ const Mine = () => {
   });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editData, setEditData] = useState({
-    name: '',
+    email: '',
     birthday: '',
-    gender: '',
-    major: ''
+    oldPassword: '',
+    newPassword: '',
+    confirmNewPassword: '',
+    showPasswordForm: false
   });
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  };
+
   useEffect(() => {
-    setEditData({
-      name: userData.name,
-      birthday: userData.birthday,
-      gender: userData.gender,
-      major: userData.major
-    });
+    const fetchUserData = async () => {
+      const currentUserStr = localStorage.getItem('currentUser');
+      if (!currentUserStr) {
+        navigate('/signin', { replace: true });
+        return;
+      }
+      const currentUser = JSON.parse(currentUserStr);
+      if (!currentUser.id) {
+        navigate('/signin', { replace: true });
+        return;
+      }
+      try {
+        const response = await axios.get('/api/users/me', {
+          headers: { 'user-id': currentUser.id }
+        });
+        const user = response.data;
+        setUserData(prev => ({
+          ...prev,
+          id: user.id,
+          name: user.name || '',
+          email: user.email || '',
+          jcu_id: user.jcu_id || '',
+          birthday: formatDate(user.birthday),
+          gender: user.gender || '',
+          major: user.major || ''
+        }));
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        alert('Failed to load personal information');
+      }
+    };
+    fetchUserData();
+  }, [navigate]);
+
+  useEffect(() => {
+    setEditData(prev => ({
+      ...prev,
+      email: userData.email || '',
+      birthday: userData.birthday || ''
+    }));
   }, [userData]);
 
   const genderDotStyle = {
@@ -54,13 +100,41 @@ const Mine = () => {
   };
 
   const handleUpdateProfile = async () => {
+    const { email, birthday, oldPassword, newPassword, confirmNewPassword, showPasswordForm } = editData;
+    if (showPasswordForm) {
+      if (!oldPassword || !newPassword || !confirmNewPassword) {
+        alert('Please fill in all password fields');
+        return;
+      }
+      if (newPassword !== confirmNewPassword) {
+        alert('New passwords do not match');
+        return;
+      }
+    }
     try {
-      const response = await axios.put(`/api/users/${userData.id}`, editData);
-      setUserData(prev => ({ ...prev, ...response.data.user }));
+      const requestBody = { email, birthday };
+      if (showPasswordForm) {
+        requestBody.oldPassword = oldPassword;
+        requestBody.newPassword = newPassword;
+      }
+      const response = await axios.put(`/api/users/${userData.id}`, requestBody);
+      setUserData(prev => ({
+        ...prev,
+        email: response.data.user.email,
+        birthday: formatDate(response.data.user.birthday)
+      }));
+      setEditData(prev => ({
+        ...prev,
+        oldPassword: '',
+        newPassword: '',
+        confirmNewPassword: '',
+        showPasswordForm: false
+      }));
       setIsEditModalOpen(false);
+      alert('Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Update failed: ' + (error.response?.data?.message || 'Unknown error'));
+      alert('Update failed: ' + (error.response?.data?.error || 'Unknown error'));
     }
   };
 
@@ -100,7 +174,6 @@ const Mine = () => {
               margin: '0 0 1.8rem 0',
               fontWeight: 600
             }}>Personal Information</h2>
-
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -137,14 +210,12 @@ const Mine = () => {
                 marginTop: '0.3rem'
               }}>{userData.major}</span>
             </div>
-
             <div style={{
               width: '100%',
               height: '1px',
               backgroundColor: '#F1F5F9',
               marginBottom: '1.5rem'
             }}></div>
-
             <div style={{
               display: 'flex',
               flexDirection: 'column',
@@ -159,14 +230,28 @@ const Mine = () => {
                   fontSize: '0.95rem',
                   color: '#64748B',
                   marginBottom: '0.3rem'
+                }}>Email</span>
+                <span style={{
+                  fontSize: '1.1rem',
+                  color: '#1D2129',
+                  fontWeight: 500
+                }}>{userData.email}</span>
+              </div>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                <span style={{
+                  fontSize: '0.95rem',
+                  color: '#64748B',
+                  marginBottom: '0.3rem'
                 }}>ID</span>
                 <span style={{
                   fontSize: '1.1rem',
                   color: '#1D2129',
                   fontWeight: 500
-                }}>{userData.id}</span>
+                }}>{userData.jcu_id}</span>
               </div>
-
               <div style={{
                 display: 'flex',
                 flexDirection: 'column'
@@ -182,16 +267,13 @@ const Mine = () => {
                   fontWeight: 500
                 }}>{userData.birthday}</span>
               </div>
-
             </div>
-
             <div style={{
               width: '100%',
               height: '1px',
               backgroundColor: '#F1F5F9',
               marginBottom: '1.5rem'
             }}></div>
-
             <button 
               style={{
                 width: '100%',
@@ -211,7 +293,6 @@ const Mine = () => {
             </button>
           </div>
         </div>
-
         <div style={{
           width: '70%',
           display: 'flex',
@@ -244,7 +325,6 @@ const Mine = () => {
                 fontWeight: 600
               }}>{userData.reservedSeats}</span>
             </div>
-
             <div style={{
               flex: 1,
               backgroundColor: '#FFFFFF',
@@ -267,7 +347,6 @@ const Mine = () => {
               }}>{userData.checkInRate}</span>
             </div>
           </div>
-
           <div style={{
             backgroundColor: '#FFFFFF',
             borderRadius: '12px',
@@ -292,7 +371,6 @@ const Mine = () => {
                 {userData.recentAppointment.dateTime} | Classroom {userData.recentAppointment.classroom} | Seat {userData.recentAppointment.seat}
               </p>
             </div>
-
             <a href="/appointment-records" style={{
               fontSize: '0.95rem',
               color: '#165DFF',
@@ -300,7 +378,6 @@ const Mine = () => {
               fontWeight: 500
             }}>view all &gt;</a>
           </div>
-
           <div style={{
             backgroundColor: '#FFFFFF',
             borderRadius: '12px',
@@ -326,7 +403,6 @@ const Mine = () => {
                 fontWeight: 500
               }}>view all &gt;</a>
             </div>
-
             <div style={{
               display: 'flex',
               gap: '1.5rem',
@@ -346,7 +422,6 @@ const Mine = () => {
           </div>
         </div>
       </div>
-
       {isEditModalOpen && (
         <div style={{
           position: 'fixed',
@@ -386,11 +461,11 @@ const Mine = () => {
                   fontSize: '0.95rem',
                   color: '#64748B',
                   marginBottom: '0.3rem'
-                }}>Name</label>
+                }}>Email</label>
                 <input
-                  type="text"
-                  name="name"
-                  value={editData.name}
+                  type="email"
+                  name="email"
+                  value={editData.email}
                   onChange={handleInputChange}
                   style={{
                     width: '100%',
@@ -401,7 +476,6 @@ const Mine = () => {
                   }}
                 />
               </div>
-
               <div>
                 <label style={{
                   display: 'block',
@@ -423,61 +497,111 @@ const Mine = () => {
                   }}
                 />
               </div>
-
-              <div>
-                <label style={{
-                  display: 'block',
+              <button
+                type="button"
+                onClick={() => setEditData(prev => ({ ...prev, showPasswordForm: !prev.showPasswordForm }))}
+                style={{
+                  padding: '0.6rem 0',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  color: '#165DFF',
+                  cursor: 'pointer',
                   fontSize: '0.95rem',
-                  color: '#64748B',
-                  marginBottom: '0.3rem'
-                }}>Gender</label>
-                <select
-                  name="gender"
-                  value={editData.gender}
-                  onChange={handleInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '0.6rem',
-                    borderRadius: '6px',
-                    border: '1px solid #E2E8F0',
-                    fontSize: '1rem'
-                  }}
-                >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.95rem',
-                  color: '#64748B',
-                  marginBottom: '0.3rem'
-                }}>Major</label>
-                <input
-                  type="text"
-                  name="major"
-                  value={editData.major}
-                  onChange={handleInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '0.6rem',
-                    borderRadius: '6px',
-                    border: '1px solid #E2E8F0',
-                    fontSize: '1rem'
-                  }}
-                />
-              </div>
+                  textAlign: 'left'
+                }}
+              >
+                {editData.showPasswordForm ? 'Cancel Password Change' : 'Change Password'}
+              </button>
+              {editData.showPasswordForm && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.2rem',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #E2E8F0'
+                }}>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.95rem',
+                      color: '#64748B',
+                      marginBottom: '0.3rem'
+                    }}>Old Password</label>
+                    <input
+                      type="password"
+                      name="oldPassword"
+                      value={editData.oldPassword}
+                      onChange={handleInputChange}
+                      style={{
+                        width: '100%',
+                        padding: '0.6rem',
+                        borderRadius: '6px',
+                        border: '1px solid #E2E8F0',
+                        fontSize: '1rem'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.95rem',
+                      color: '#64748B',
+                      marginBottom: '0.3rem'
+                    }}>New Password</label>
+                    <input
+                      type="password"
+                      name="newPassword"
+                      value={editData.newPassword}
+                      onChange={handleInputChange}
+                      style={{
+                        width: '100%',
+                        padding: '0.6rem',
+                        borderRadius: '6px',
+                        border: '1px solid #E2E8F0',
+                        fontSize: '1rem'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.95rem',
+                      color: '#64748B',
+                      marginBottom: '0.3rem'
+                    }}>Confirm New Password</label>
+                    <input
+                      type="password"
+                      name="confirmNewPassword"
+                      value={editData.confirmNewPassword}
+                      onChange={handleInputChange}
+                      style={{
+                        width: '100%',
+                        padding: '0.6rem',
+                        borderRadius: '6px',
+                        border: '1px solid #E2E8F0',
+                        fontSize: '1rem'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-
             <div style={{
               display: 'flex',
               gap: '1rem',
               justifyContent: 'flex-end'
             }}>
               <button
-                onClick={() => setIsEditModalOpen(false)}
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditData(prev => ({
+                    ...prev,
+                    oldPassword: '',
+                    newPassword: '',
+                    confirmNewPassword: '',
+                    showPasswordForm: false
+                  }));
+                }}
                 style={{
                   padding: '0.6rem 1.2rem',
                   borderRadius: '6px',

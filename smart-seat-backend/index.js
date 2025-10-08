@@ -12,7 +12,7 @@ app.get('/', (req, res) => {
 
 // ✅ 挂载路由
 const authRoutes = require('./routes/authRoutes');
-const usersRoutes = require('./routes/users');
+const usersRoutes = require('./routes/usersRoutes');
 const bookingsRoutes = require('./routes/bookings');
 const classroomsRoutes = require('./routes/classrooms');
 
