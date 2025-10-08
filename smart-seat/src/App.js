@@ -7,6 +7,7 @@ import Mine from './mine';
 import SignIn from './signin';
 import SignUp from './signup';
 import Form from './form';
+import SeatRecords from './seat-records';
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -327,12 +328,12 @@ function App() {
                   <div 
                     style={{ 
                       ...styles.dropdownItem,
-                      ...(seatSubItemHover === 'records' || location.pathname === '/seat/records' ? styles.dropdownItemHover : {})
+                      ...(seatSubItemHover === 'records' || location.pathname === '/seat-records' ? styles.dropdownItemHover : {})
                     }}
                     onClick={() => {
                       setSeatMenuOpen(false);
                       setActiveTab('seat');
-                      navigate('/seat/records');
+                      navigate('/seat-records');
                     }}
                     onMouseEnter={() => setSeatSubItemHover('records')}
                     onMouseLeave={() => setSeatSubItemHover('')}
@@ -411,7 +412,7 @@ function App() {
         <Route path="/form" element={<PrivateRoute element={<Form />} />} />
         <Route path="/" element={<PrivateRoute element={<Home />} />} />
         <Route path="/seat" element={<PrivateRoute element={<Seat />} />} />
-        <Route path="/seat/records" element={<PrivateRoute element={<div>Booking Records</div>} />} />
+        <Route path="/seat-records" element={<PrivateRoute element={<SeatRecords />} />} />
         <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
