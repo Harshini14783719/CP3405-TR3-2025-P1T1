@@ -4,10 +4,20 @@ exports.getAllBookings = async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();
-    const [bookings] = await connection.execute(`
+    const userId = req.query.userId;
+    
+    let query = `
       SELECT b.id, b.book_id, b.book_name, b.room, b.seat_number, b.date, b.start_time, b.end_time, b.status
       FROM bookings b
-    `);
+    `;
+    const params = [];
+    
+    if (userId) {
+      query += ' WHERE b.book_id = ?';
+      params.push(userId);
+    }
+    
+    const [bookings] = await connection.execute(query, params);
     res.json(bookings);
   } catch (error) {
     console.error('Error fetching bookings:', error);
@@ -27,7 +37,7 @@ exports.getBookingById = async (req, res) => {
       WHERE b.id = ?
     `, [req.params.id]);
 
-    if (bookings.length === 0) return res.status(404).json({ message: 'Booking not found' });
+    if (bookings.length === 0) return res.status(404).json({ message: 'booking not found' });
     res.json(bookings[0]);
   } catch (error) {
     console.error('Error fetching booking:', error);
@@ -37,7 +47,7 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
-exports.createBooking = async (req, res) => {
+exports.createbooking = async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();
@@ -64,8 +74,8 @@ exports.createBooking = async (req, res) => {
       [room, seat_number, date, start_time, end_time, book_name, book_id]
     );
 
-    const [newBooking] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
-    res.status(201).json(newBooking[0]);
+    const [newbooking] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
+    res.status(201).json(newbooking[0]);
   } catch (error) {
     console.error('Error creating booking:', error);
     res.status(500).json({ message: 'Server error' });
@@ -74,7 +84,7 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-exports.updateBooking = async (req, res) => {
+exports.updatebooking = async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();
@@ -82,7 +92,7 @@ exports.updateBooking = async (req, res) => {
 
     const [existing] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [bookingId]);
     if (existing.length === 0) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ message: 'booking not found' });
     }
 
     const fields = [];
@@ -96,8 +106,8 @@ exports.updateBooking = async (req, res) => {
     const sql = `UPDATE bookings SET ${fields.join(', ')} WHERE id = ?`;
     await connection.execute(sql, values);
 
-    const [updatedBooking] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [bookingId]);
-    res.json(updatedBooking[0]);
+    const [updatedbooking] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [bookingId]);
+    res.json(updatedbooking[0]);
   } catch (error) {
     console.error('Error updating booking:', error);
     res.status(500).json({ message: 'Server error' });
@@ -106,7 +116,7 @@ exports.updateBooking = async (req, res) => {
   }
 };
 
-exports.deleteBooking = async (req, res) => {
+exports.deletebooking = async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();
@@ -114,11 +124,11 @@ exports.deleteBooking = async (req, res) => {
 
     const [existing] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [bookingId]);
     if (existing.length === 0) {
-      return res.status(404).json({ message: 'Booking not found' });
+      return res.status(404).json({ message: 'booking not found' });
     }
 
     await connection.execute('DELETE FROM bookings WHERE id = ?', [bookingId]);
-    res.json({ message: 'Booking deleted', booking: existing[0] });
+    res.json({ message: 'booking deleted', booking: existing[0] });
   } catch (error) {
     console.error('Error deleting booking:', error);
     res.status(500).json({ message: 'Server error' });
@@ -146,6 +156,32 @@ exports.getBookedSeats = async (req, res) => {
     res.json(results);
   } catch (error) {
     console.error('Error fetching booked seats:', error);
+    res.status(500).json({ message: 'Server error' });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+exports.cancelBooking = async (req, res) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const bookingId = req.params.id;
+
+    const [existing] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [bookingId]);
+    if (existing.length === 0) {
+      return res.status(404).json({ message: 'booking not found' });
+    }
+
+    await connection.execute(
+      'UPDATE bookings SET status = 2 WHERE id = ?',
+      [bookingId]
+    );
+
+    const [updatedBooking] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [bookingId]);
+    res.json(updatedBooking[0]);
+  } catch (error) {
+    console.error('Error canceling booking:', error);
     res.status(500).json({ message: 'Server error' });
   } finally {
     if (connection) connection.release();

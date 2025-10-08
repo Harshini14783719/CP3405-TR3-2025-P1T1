@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+
 const SeatRecords = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [bookings, setBookings] = useState([]);
@@ -22,11 +23,8 @@ const SeatRecords = () => {
         });
         setUserInfo(userResponse.data);
 
-        const bookingsResponse = await axios.get('/api/bookings');
-        const userBookings = bookingsResponse.data.filter(
-          booking => booking.book_id === parseInt(userId)
-        );
-        const sortedBookings = userBookings.sort((a, b) => {
+        const bookingsResponse = await axios.get(`/api/bookings?userId=${userId}`);
+        const sortedBookings = bookingsResponse.data.sort((a, b) => {
           const timeA = new Date(`${a.date} ${a.start_time}`).getTime();
           const timeB = new Date(`${b.date} ${b.start_time}`).getTime();
           return timeB - timeA;
@@ -49,6 +47,19 @@ const SeatRecords = () => {
       return `Teaching Building ${buildingFloor.charAt(0)} - Room ${buildingFloor.slice(1)}-${roomNum}`;
     }
     return room;
+  };
+
+  const cancelBooking = async (bookingId) => {
+    if (window.confirm('Are you sure you want to cancel this booking?')) {
+      try {
+        await axios.put(`/api/bookings/${bookingId}/cancel`);
+        setBookings(bookings.map(booking => 
+          booking.id === bookingId ? { ...booking, status: 2 } : booking
+        ));
+      } catch (err) {
+        alert('Failed to cancel booking: ' + (err.response?.data?.message || 'Unknown error'));
+      }
+    }
   };
 
   return (
@@ -155,11 +166,24 @@ const SeatRecords = () => {
             color: #1e40af;
             font-weight: 500;
           }
+          .cancel-btn {
+            padding: 0.4rem 0.8rem;
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+          }
+          .cancel-btn:hover {
+            background-color: #dc2626;
+          }
         `}
       </style>
       <div className="records-header">
         <h1>My Booking Records</h1>
-        {userInfo && <p>Username: {userInfo.name} | User ID: {userInfo.id}</p>}
+        {userInfo && <p>Name: {userInfo.name} | JCU ID: {userInfo.jcu_id}</p>}
       </div>
       {loading ? (
         <div className="loading-state">Loading booking records...</div>
@@ -177,6 +201,7 @@ const SeatRecords = () => {
                 <th>Booking Date</th>
                 <th>Booking Time Slot</th>
                 <th>Booking Status</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -184,7 +209,7 @@ const SeatRecords = () => {
                 <tr key={booking.id}>
                   <td>{formatLocation(booking.room)}</td>
                   <td>{booking.seat_number}</td>
-                  <td>{booking.date}</td>
+                  <td>{new Date(booking.date).toISOString().split('T')[0]}</td>
                   <td className="time-display">
                     {booking.start_time} - {booking.end_time}
                   </td>
@@ -199,6 +224,16 @@ const SeatRecords = () => {
                       {statusMap[booking.status] || 'Unknown Status'}
                     </span>
                   </td>
+                  <td>
+                    {booking.status === 0 && (
+                      <button 
+                        className="cancel-btn"
+                        onClick={() => cancelBooking(booking.id)}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -208,4 +243,5 @@ const SeatRecords = () => {
     </div>
   );
 };
+
 export default SeatRecords;
