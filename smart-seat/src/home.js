@@ -451,22 +451,162 @@ const Home = () => {
             border-top: 1px solid #1e293b;
             font-size: 0.9rem;
           }
+
+          /* Mobile Navigation */
+          .mobile-bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background-color: #ffffff;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+            z-index: 9998;
+            justify-content: space-around;
+            align-items: center;
+          }
+
+          .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #4E5969;
+            text-decoration: none;
+            font-size: 10px;
+            width: 33.33%;
+            height: 100%;
+          }
+
+          .active-mobile-nav-item {
+            color: #165DFF;
+          }
+
+          .mobile-nav-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+          }
+
+          /* Media Queries for Tablet and Mobile */
+          @media (max-width: 1024px) {
+            .hero h1 {
+              font-size: 2.8rem;
+            }
+            
+            .features-grid {
+              grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .testimonials-grid {
+              grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .footer-content {
+              grid-template-columns: repeat(2, 1fr);
+            }
+          }
+
+          @media (max-width: 768px) {
+            .navbar .nav-links {
+              display: none;
+            }
+            
+            .hero {
+              padding: 6rem 5% 8rem;
+            }
+            
+            .hero h1 {
+              font-size: 2.2rem;
+            }
+            
+            .hero p {
+              font-size: 1rem;
+            }
+            
+            .section {
+              padding: 5rem 5%;
+            }
+            
+            .section-title {
+              font-size: 1.8rem;
+            }
+            
+            .about-container {
+              grid-template-columns: 1fr;
+              gap: 3rem;
+            }
+            
+            .features-grid {
+              grid-template-columns: 1fr;
+            }
+            
+            .audiences {
+              grid-template-columns: 1fr;
+              gap: 2rem;
+            }
+            
+            .steps {
+              grid-template-columns: 1fr;
+              gap: 3rem;
+            }
+            
+            .steps::before {
+              display: none;
+            }
+            
+            .testimonials-grid {
+              grid-template-columns: 1fr;
+            }
+            
+            .testimonials {
+              padding-bottom: 8rem;
+            }
+            
+            .cta h2 {
+              font-size: 2rem;
+            }
+            
+            .footer-content {
+              grid-template-columns: 1fr;
+              gap: 2rem;
+            }
+            
+            /* Show mobile bottom navigation */
+            .mobile-bottom-nav {
+              display: flex;
+            }
+            
+            /* Adjust content for mobile nav */
+            .footer {
+              padding-bottom: 80px;
+            }
+            
+            .cta {
+              padding-bottom: 6rem;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .hero h1 {
+              font-size: 1.8rem;
+            }
+            
+            .btn {
+              padding: 0.7rem 1.5rem;
+              font-size: 0.9rem;
+            }
+            
+            .feature-card, .audience-card, .step, .testimonial-card {
+              padding: 1.5rem;
+            }
+            
+            .cta h2 {
+              font-size: 1.6rem;
+            }
+          }
         `}
       </style>
-
-      {/*<nav className="navbar">
-        <div className="logo">
-          <span className="logo-icon">🪑</span>
-          <span>Smart Seat</span>
-        </div>
-        <div className="nav-links">
-          <a href="#about">About</a>
-          <a href="#features">Features</a>
-          <a href="#audiences">For Whom</a>
-          <a href="#how-it-works">How It Works</a>
-          <a href="#testimonials">Testimonials</a>
-        </div>
-      </nav>*/}
 
       <section className="hero">
         <div className="hero-content">
@@ -669,8 +809,8 @@ const Home = () => {
           <p>&copy; {new Date().getFullYear()} Smart Seat. All rights reserved.</p>
         </div>
       </footer>
+
     </div>
   );
 };
-
 export default Home;

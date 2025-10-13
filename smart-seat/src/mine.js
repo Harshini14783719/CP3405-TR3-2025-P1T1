@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 const Mine = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [userData, setUserData] = useState({
     id: '',
     name: '',
@@ -29,6 +30,14 @@ const Mine = () => {
     showPasswordForm: false
   });
   const initialModalCheck = useRef(true);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -171,7 +180,8 @@ const Mine = () => {
     setEditData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleUpdateProfile = async () => {
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
     const { email, birthday, oldPassword, newPassword, confirmNewPassword, showPasswordForm } = editData;
     if (showPasswordForm) {
       if (!oldPassword || !newPassword || !confirmNewPassword) {
@@ -216,18 +226,19 @@ const Mine = () => {
       width: '100%',
       minHeight: '100vh',
       margin: 0,
-      padding: '2.5rem 3rem',
+      padding: isMobile ? '1.5rem 1rem' : '2.5rem 3rem',
       boxSizing: 'border-box',
       backgroundColor: '#F5F7FA',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
       <div style={{
         display: 'flex',
-        gap: '2.5rem',
-        width: '100%'
+        gap: isMobile ? '1.5rem' : '2.5rem',
+        width: '100%',
+        flexDirection: isMobile ? 'column' : 'row'
       }}>
         <div style={{
-          width: '30%',
+          width: isMobile ? '100%' : '30%',
           display: 'flex',
           flexDirection: 'column',
           gap: '1.5rem'
@@ -236,26 +247,26 @@ const Mine = () => {
             backgroundColor: '#FFFFFF',
             borderRadius: '12px',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
-            padding: '2rem',
+            padding: isMobile ? '1.5rem' : '2rem',
             flex: 1,
             display: 'flex',
             flexDirection: 'column'
           }}>
             <h2 style={{
-              fontSize: '1.3rem',
+              fontSize: isMobile ? '1.2rem' : '1.3rem',
               color: '#1D2129',
-              margin: '0 0 1.8rem 0',
+              margin: `0 0 ${isMobile ? '1.2rem' : '1.8rem'} 0`,
               fontWeight: 600
             }}>Personal Information</h2>
             <div style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              marginBottom: '1.8rem'
+              marginBottom: isMobile ? '1.2rem' : '1.8rem'
             }}>
               <div style={{
-                width: '100px',
-                height: '100px',
+                width: isMobile ? '80px' : '100px',
+                height: isMobile ? '80px' : '100px',
                 borderRadius: '50%',
                 overflow: 'visible',
                 position: 'relative',
@@ -273,12 +284,12 @@ const Mine = () => {
                 <div style={genderDotStyle}></div>
               </div>
               <span style={{
-                fontSize: '1.2rem',
+                fontSize: isMobile ? '1.1rem' : '1.2rem',
                 color: '#1D2129',
                 fontWeight: 600
               }}>{userData.name}</span>
               <span style={{
-                fontSize: '0.95rem',
+                fontSize: isMobile ? '0.9rem' : '0.95rem',
                 color: '#64748B',
                 marginTop: '0.3rem'
               }}>{userData.major}</span>
@@ -292,20 +303,20 @@ const Mine = () => {
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '1.2rem',
-              marginBottom: '1.8rem'
+              gap: isMobile ? '1rem' : '1.2rem',
+              marginBottom: isMobile ? '1.2rem' : '1.8rem'
             }}>
               <div style={{
                 display: 'flex',
                 flexDirection: 'column'
               }}>
                 <span style={{
-                  fontSize: '0.95rem',
+                  fontSize: isMobile ? '0.9rem' : '0.95rem',
                   color: '#64748B',
                   marginBottom: '0.3rem'
                 }}>Email</span>
                 <span style={{
-                  fontSize: '1.1rem',
+                  fontSize: isMobile ? '1rem' : '1.1rem',
                   color: '#1D2129',
                   fontWeight: 500
                 }}>{userData.email}</span>
@@ -315,12 +326,12 @@ const Mine = () => {
                 flexDirection: 'column'
               }}>
                 <span style={{
-                  fontSize: '0.95rem',
+                  fontSize: isMobile ? '0.9rem' : '0.95rem',
                   color: '#64748B',
                   marginBottom: '0.3rem'
                 }}>ID</span>
                 <span style={{
-                  fontSize: '1.1rem',
+                  fontSize: isMobile ? '1rem' : '1.1rem',
                   color: '#1D2129',
                   fontWeight: 500
                 }}>{userData.jcu_id}</span>
@@ -330,12 +341,12 @@ const Mine = () => {
                 flexDirection: 'column'
               }}>
                 <span style={{
-                  fontSize: '0.95rem',
+                  fontSize: isMobile ? '0.9rem' : '0.95rem',
                   color: '#64748B',
                   marginBottom: '0.3rem'
                 }}>Birthday</span>
                 <span style={{
-                  fontSize: '1.1rem',
+                  fontSize: isMobile ? '1rem' : '1.1rem',
                   color: '#1D2129',
                   fontWeight: 500
                 }}>{userData.birthday}</span>
@@ -367,33 +378,34 @@ const Mine = () => {
           </div>
         </div>
         <div style={{
-          width: '70%',
+          width: isMobile ? '100%' : '70%',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.8rem'
+          gap: isMobile ? '1.2rem' : '1.8rem'
         }}>
           <div style={{
             display: 'flex',
-            gap: '1.8rem',
-            width: '100%'
+            gap: isMobile ? '1rem' : '1.8rem',
+            width: '100%',
+            flexDirection: isMobile ? 'column' : 'row'
           }}>
             <div style={{
               flex: 1,
               backgroundColor: '#FFFFFF',
               borderRadius: '12px',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
-              padding: '1.8rem',
+              padding: isMobile ? '1.2rem' : '1.8rem',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center'
             }}>
               <span style={{
-                fontSize: '0.95rem',
+                fontSize: isMobile ? '0.9rem' : '0.95rem',
                 color: '#64748B',
                 marginBottom: '0.5rem'
               }}>Number of Reserved Seats</span>
               <span style={{
-                fontSize: '2.2rem',
+                fontSize: isMobile ? '1.8rem' : '2.2rem',
                 color: '#1D2129',
                 fontWeight: 600
               }}>{userData.reservedSeats}</span>
@@ -403,18 +415,18 @@ const Mine = () => {
               backgroundColor: '#FFFFFF',
               borderRadius: '12px',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
-              padding: '1.8rem',
+              padding: isMobile ? '1.2rem' : '1.8rem',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center'
             }}>
               <span style={{
-                fontSize: '0.95rem',
+                fontSize: isMobile ? '0.9rem' : '0.95rem',
                 color: '#64748B',
                 marginBottom: '0.5rem'
               }}>Check-in Rate</span>
               <span style={{
-                fontSize: '2.2rem',
+                fontSize: isMobile ? '1.8rem' : '2.2rem',
                 color: '#1D2129',
                 fontWeight: 600
               }}>{userData.checkInRate}</span>
@@ -424,40 +436,7 @@ const Mine = () => {
             backgroundColor: '#FFFFFF',
             borderRadius: '12px',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
-            padding: '1.8rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div>
-              <h3 style={{
-                fontSize: '1.1rem',
-                color: '#1D2129',
-                margin: '0 0 0.6rem 0',
-                fontWeight: 600
-              }}>Most Recent Appointment</h3>
-              <p style={{
-                fontSize: '1rem',
-                color: '#475467',
-                margin: 0
-              }}>
-                {userData.recentAppointment.date 
-                  ? `${userData.recentAppointment.date} ${userData.recentAppointment.time} | Room ${userData.recentAppointment.room} | Seat ${userData.recentAppointment.seat}`
-                  : 'No upcoming appointments'}
-              </p>
-            </div>
-            <a href="/seat-records" style={{
-              fontSize: '0.95rem',
-              color: '#165DFF',
-              textDecoration: 'none',
-              fontWeight: 500
-            }}>view all &gt;</a>
-          </div>
-          <div style={{
-            backgroundColor: '#FFFFFF',
-            borderRadius: '12px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
-            padding: '1.8rem'
+            padding: isMobile ? '1.2rem' : '1.8rem'
           }}>
             <div style={{
               display: 'flex',
@@ -466,13 +445,49 @@ const Mine = () => {
               marginBottom: '1.2rem'
             }}>
               <h3 style={{
-                fontSize: '1.1rem',
+                fontSize: isMobile ? '1rem' : '1.1rem',
+                color: '#1D2129',
+                margin: 0,
+                fontWeight: 600
+              }}>Most Recent Appointment</h3>
+              <a href="/seat-records" style={{
+                fontSize: isMobile ? '0.9rem' : '0.95rem',
+                color: '#165DFF',
+                textDecoration: 'none',
+                fontWeight: 500
+              }}>view all &gt;</a>
+            </div>
+            <p style={{
+              fontSize: isMobile ? '0.9rem' : '1rem',
+              color: '#475467',
+              margin: 0,
+              wordBreak: 'break-all'
+            }}>
+              {userData.recentAppointment.date 
+                ? `${userData.recentAppointment.date} ${userData.recentAppointment.time} | Room ${userData.recentAppointment.room} | Seat ${userData.recentAppointment.seat}`
+                : 'No upcoming appointments'}
+            </p>
+          </div>
+          <div style={{
+            backgroundColor: '#FFFFFF',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
+            padding: isMobile ? '1.2rem' : '1.8rem'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1.2rem'
+            }}>
+              <h3 style={{
+                fontSize: isMobile ? '1rem' : '1.1rem',
                 color: '#1D2129',
                 margin: 0,
                 fontWeight: 600
               }}>My Favorite Rooms</h3>
               <a href="/seat-records" style={{
-                fontSize: '0.95rem',
+                fontSize: isMobile ? '0.9rem' : '0.95rem',
                 color: '#165DFF',
                 textDecoration: 'none',
                 fontWeight: 500
@@ -480,7 +495,7 @@ const Mine = () => {
             </div>
             <div style={{
               display: 'flex',
-              gap: '1.5rem',
+              gap: isMobile ? '0.8rem' : '1.5rem',
               flexWrap: 'wrap'
             }}>
               {userData.favoriteClassrooms.length > 0 
@@ -489,13 +504,13 @@ const Mine = () => {
                       backgroundColor: '#F0F5FF',
                       color: '#165DFF',
                       borderRadius: '4px',
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.95rem',
+                      padding: isMobile ? '0.4rem 0.8rem' : '0.5rem 1rem',
+                      fontSize: isMobile ? '0.9rem' : '0.95rem',
                       fontWeight: 500
                     }}>{room}</span>
                   ))
                 : <span style={{
-                    fontSize: '0.95rem',
+                    fontSize: isMobile ? '0.9rem' : '0.95rem',
                     color: '#64748B'
                   }}>No favorite rooms yet</span>
               }
@@ -514,203 +529,214 @@ const Mine = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 1000
+          zIndex: 1000,
+          padding: '1rem'
         }}>
           <div style={{
             backgroundColor: 'white',
             borderRadius: '12px',
-            padding: '2rem',
-            width: '500px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)'
+            padding: isMobile ? '1.5rem' : '2rem',
+            width: isMobile ? '100%' : '500px',
+            maxWidth: '100%',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            maxHeight: '80vh',
+            overflowY: 'auto'
           }}>
-            <h3 style={{
-              fontSize: '1.3rem',
-              color: '#1D2129',
-              margin: '0 0 1.5rem 0',
-              fontWeight: 600
-            }}>Edit Profile</h3>
-            
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.2rem',
-              marginBottom: '1.5rem'
-            }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.95rem',
-                  color: '#64748B',
-                  marginBottom: '0.3rem'
-                }}>Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={editData.email}
-                  onChange={handleInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '0.6rem',
-                    borderRadius: '6px',
-                    border: '1px solid #E2E8F0',
-                    fontSize: '1rem'
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.95rem',
-                  color: '#64748B',
-                  marginBottom: '0.3rem'
-                }}>Birthday</label>
-                <input
-                  type="date"
-                  name="birthday"
-                  value={editData.birthday}
-                  onChange={handleInputChange}
-                  style={{
-                    width: '100%',
-                    padding: '0.6rem',
-                    borderRadius: '6px',
-                    border: '1px solid #E2E8F0',
-                    fontSize: '1rem'
-                  }}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditData(prev => ({ ...prev, showPasswordForm: !prev.showPasswordForm }))}
-                style={{
-                  padding: '0.6rem 0',
-                  border: 'none',
-                  backgroundColor: 'transparent',
-                  color: '#165DFF',
-                  cursor: 'pointer',
-                  fontSize: '0.95rem',
-                  textAlign: 'left'
-                }}
-              >
-                {editData.showPasswordForm ? 'Cancel Password Change' : 'Change Password'}
-              </button>
-              {editData.showPasswordForm && (
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1.2rem',
-                  paddingTop: '1rem',
-                  borderTop: '1px solid #E2E8F0'
-                }}>
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '0.95rem',
-                      color: '#64748B',
-                      marginBottom: '0.3rem'
-                    }}>Old Password</label>
-                    <input
-                      type="password"
-                      name="oldPassword"
-                      value={editData.oldPassword}
-                      onChange={handleInputChange}
-                      style={{
-                        width: '100%',
-                        padding: '0.6rem',
-                        borderRadius: '6px',
-                        border: '1px solid #E2E8F0',
-                        fontSize: '1rem'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '0.95rem',
-                      color: '#64748B',
-                      marginBottom: '0.3rem'
-                    }}>New Password</label>
-                    <input
-                      type="password"
-                      name="newPassword"
-                      value={editData.newPassword}
-                      onChange={handleInputChange}
-                      style={{
-                        width: '100%',
-                        padding: '0.6rem',
-                        borderRadius: '6px',
-                        border: '1px solid #E2E8F0',
-                        fontSize: '1rem'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '0.95rem',
-                      color: '#64748B',
-                      marginBottom: '0.3rem'
-                    }}>Confirm New Password</label>
-                    <input
-                      type="password"
-                      name="confirmNewPassword"
-                      value={editData.confirmNewPassword}
-                      onChange={handleInputChange}
-                      style={{
-                        width: '100%',
-                        padding: '0.6rem',
-                        borderRadius: '6px',
-                        border: '1px solid #E2E8F0',
-                        fontSize: '1rem'
-                      }}
-                    />
-                  </div>
+            <form onSubmit={handleUpdateProfile}>
+              <h3 style={{
+                fontSize: isMobile ? '1.2rem' : '1.3rem',
+                color: '#1D2129',
+                margin: `0 0 ${isMobile ? '1.2rem' : '1.5rem'} 0`,
+                fontWeight: 600
+              }}>Edit Profile</h3>
+              
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: isMobile ? '1rem' : '1.2rem',
+                marginBottom: isMobile ? '1.2rem' : '1.5rem'
+              }}>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: isMobile ? '0.9rem' : '0.95rem',
+                    color: '#64748B',
+                    marginBottom: '0.3rem'
+                  }}>Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={editData.email}
+                    onChange={handleInputChange}
+                    autoComplete="username"
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem',
+                      borderRadius: '6px',
+                      border: '1px solid #E2E8F0',
+                      fontSize: '1rem'
+                    }}
+                  />
                 </div>
-              )}
-            </div>
-            <div style={{
-              display: 'flex',
-              gap: '1rem',
-              justifyContent: 'flex-end'
-            }}>
-              <button
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setEditData(prev => ({
-                    ...prev,
-                    oldPassword: '',
-                    newPassword: '',
-                    confirmNewPassword: '',
-                    showPasswordForm: false
-                  }));
-                  navigate('/mine', { replace: true });
-                }}
-                style={{
-                  padding: '0.6rem 1.2rem',
-                  borderRadius: '6px',
-                  border: '1px solid #E2E8F0',
-                  backgroundColor: 'white',
-                  color: '#64748B',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateProfile}
-                style={{
-                  padding: '0.6rem 1.2rem',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: '#165DFF',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                Save Changes
-              </button>
-            </div>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: isMobile ? '0.9rem' : '0.95rem',
+                    color: '#64748B',
+                    marginBottom: '0.3rem'
+                  }}>Birthday</label>
+                  <input
+                    type="date"
+                    name="birthday"
+                    value={editData.birthday}
+                    onChange={handleInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem',
+                      borderRadius: '6px',
+                      border: '1px solid #E2E8F0',
+                      fontSize: '1rem'
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditData(prev => ({ ...prev, showPasswordForm: !prev.showPasswordForm }))}
+                  style={{
+                    padding: '0.6rem 0',
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    color: '#165DFF',
+                    cursor: 'pointer',
+                    fontSize: isMobile ? '0.9rem' : '0.95rem',
+                    textAlign: 'left'
+                  }}
+                >
+                  {editData.showPasswordForm ? 'Cancel Password Change' : 'Change Password'}
+                </button>
+                {editData.showPasswordForm && (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: isMobile ? '1rem' : '1.2rem',
+                    paddingTop: '1rem',
+                    borderTop: '1px solid #E2E8F0'
+                  }}>
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: isMobile ? '0.9rem' : '0.95rem',
+                        color: '#64748B',
+                        marginBottom: '0.3rem'
+                      }}>Old Password</label>
+                      <input
+                        type="password"
+                        name="oldPassword"
+                        value={editData.oldPassword}
+                        onChange={handleInputChange}
+                        autoComplete="current-password"
+                        style={{
+                          width: '100%',
+                          padding: '0.6rem',
+                          borderRadius: '6px',
+                          border: '1px solid #E2E8F0',
+                          fontSize: '1rem'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: isMobile ? '0.9rem' : '0.95rem',
+                        color: '#64748B',
+                        marginBottom: '0.3rem'
+                      }}>New Password</label>
+                      <input
+                        type="password"
+                        name="newPassword"
+                        value={editData.newPassword}
+                        onChange={handleInputChange}
+                        autoComplete="new-password"
+                        style={{
+                          width: '100%',
+                          padding: '0.6rem',
+                          borderRadius: '6px',
+                          border: '1px solid #E2E8F0',
+                          fontSize: '1rem'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: isMobile ? '0.9rem' : '0.95rem',
+                        color: '#64748B',
+                        marginBottom: '0.3rem'
+                      }}>Confirm New Password</label>
+                      <input
+                        type="password"
+                        name="confirmNewPassword"
+                        value={editData.confirmNewPassword}
+                        onChange={handleInputChange}
+                        autoComplete="new-password"
+                        style={{
+                          width: '100%',
+                          padding: '0.6rem',
+                          borderRadius: '6px',
+                          border: '1px solid #E2E8F0',
+                          fontSize: '1rem'
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div style={{
+                display: 'flex',
+                gap: '1rem',
+                justifyContent: 'flex-end'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditData(prev => ({
+                      ...prev,
+                      oldPassword: '',
+                      newPassword: '',
+                      confirmNewPassword: '',
+                      showPasswordForm: false
+                    }));
+                    navigate('/mine', { replace: true });
+                  }}
+                  style={{
+                    padding: '0.6rem 1.2rem',
+                    borderRadius: '6px',
+                    border: '1px solid #E2E8F0',
+                    backgroundColor: 'white',
+                    color: '#64748B',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '0.6rem 1.2rem',
+                    borderRadius: '6px',
+                    border: 'none',
+                    backgroundColor: '#165DFF',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

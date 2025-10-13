@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import axios from 'axios';
-import Home from './home';
-import Seat from './seat';
-import Mine from './mine';
 import SignIn from './signin';
 import SignUp from './signup';
 import Form from './form';
+import Home from './home';
+import Seat from './seat';
 import SeatRecords from './seat-records';
+import Mine from './mine';
 import LecClass from './lec-class';
 
 function App() {
@@ -19,6 +19,7 @@ function App() {
   const [seatSubItemHover, setSeatSubItemHover] = useState('');
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const seatRef = useRef(null);
   const profileRef = useRef(null);
   const location = useLocation();
@@ -89,6 +90,7 @@ function App() {
           const userData = await response.json();
           localStorage.setItem('currentUser', JSON.stringify(userData));
           setUserInfo(userData);
+
           await updateExpiredBookings(userData.id);
         } catch (err) {
           console.error('Failed to sync user info:', err);
@@ -143,23 +145,26 @@ function App() {
 
   const handleEditProfile = () => {
     setProfileMenuOpen(false);
+    setSidebarOpen(false);
     navigate('/mine?edit=true');
   };
 
   const goToMine = () => {
     setProfileMenuOpen(false);
+    setSidebarOpen(false);
     navigate('/mine');
   };
 
   const handleSeatBooking = () => {
     setSeatMenuOpen(false);
     setActiveTab('seat');
+    setSidebarOpen(false);
     navigate('/seat');
   };
 
   const getUnderlineWidth = (tab) => {
     if (activeTab === tab || hoveredTab === tab || (tab === 'seat' && seatMenuOpen)) {
-      return '120%';
+      return '80px';
     }
     return '0';
   };
@@ -172,21 +177,30 @@ function App() {
 
   const styles = {
     appContainer: {
+      width: '100%',
+      minHeight: '100vh',
       margin: 0,
       padding: 0,
       boxSizing: 'border-box',
-      fontFamily: "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+      fontFamily: "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      position: 'relative'
     },
     navbar: {
       display: 'flex',
-      justifyContent: 'space-between',
       alignItems: 'center',
-      padding: '0 40px',
-      backgroundColor: '#ffffff',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+      justifyContent: 'space-between',
+      padding: '0 2.5rem',
       height: '80px',
+      backgroundColor: '#ffffff',
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
+      position: 'sticky',
+      top: 0,
+      left: 0,
+      width: '100%',
+      zIndex: 9999,
       margin: 0,
-      borderBottom: '1px solid #e0e0e0'
+      boxSizing: 'border-box',
+      borderBottom: '1px solid #f0f2f5'
     },
     navbarLeft: {
       display: 'flex',
@@ -194,44 +208,44 @@ function App() {
     },
     logo: {
       display: 'flex',
-      alignItems: 'center'
+      alignItems: 'center',
+      gap: '0.8rem'
     },
     logoIcon: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       width: '36px',
       height: '36px',
-      borderRadius: '8px',
       backgroundColor: '#165DFF',
-      color: 'white',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      fontSize: '18px',
+      color: '#ffffff',
+      borderRadius: '6px',
       fontWeight: 700,
-      marginRight: '12px'
+      fontSize: '1.1rem'
     },
     logoText: {
-      fontSize: '20px',
+      color: '#1D2129',
       fontWeight: 700,
-      color: '#1D2129'
+      fontSize: '1.25rem'
     },
     navLinks: {
       display: 'flex',
-      alignItems: 'center',
-      gap: '70px',
+      gap: '4rem',
       margin: '0 auto'
     },
     navItem: {
+      position: 'relative',
       color: '#4E5969',
       textDecoration: 'none',
-      fontSize: '18px',
       fontWeight: 600,
-      position: 'relative',
-      padding: '12px 0',
-      cursor: 'pointer',
-      transition: 'color 0.2s ease'
+      fontSize: '1rem',
+      padding: '0.75rem 0',
+      transition: 'color 0.2s ease',
+      cursor: 'pointer'
     },
     activeNavItem: {
-      color: '#165DFF'
+      color: '#165DFF',
+      fontWeight: 'bold'
     },
     underlineIndicator: {
       position: 'absolute',
@@ -241,7 +255,7 @@ function App() {
       height: '3px',
       backgroundColor: '#165DFF',
       borderRadius: '2px',
-      transition: 'width 0.3s ease',
+      transition: 'width 0.3s ease'
     },
     seatContainer: {
       position: 'relative'
@@ -251,38 +265,36 @@ function App() {
       top: '100%',
       left: '50%',
       transform: 'translateX(-50%)',
-      marginTop: '0px',
-      backgroundColor: 'white',
+      margin: '0 0 0 0',
+      background: 'white',
       borderRadius: '8px',
-      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.05)',
+      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
       padding: '8px 0',
-      minWidth: '200px',
+      minWidth: '180px',
       zIndex: 1000,
-      border: '1px solid rgba(0, 0, 0, 0.08)',
       overflow: 'hidden'
     },
     dropdownItem: {
-      padding: '12px 20px',
+      padding: '10px 16px',
       color: '#4E5969',
       textDecoration: 'none',
       display: 'block',
       fontSize: '14px',
-      transition: 'all 0.2s ease',
+      transition: 'background-color 0.2s ease',
       cursor: 'pointer',
       position: 'relative'
     },
     dropdownItemHover: {
-      backgroundColor: '#F0F5FF',
-      color: '#165DFF',
-      paddingLeft: '24px'
+      backgroundColor: '#F2F3F5',
+      color: '#165DFF'
     },
     profileContainer: {
       position: 'relative',
       cursor: 'pointer'
     },
     profileImage: {
-      width: '45px',
-      height: '45px',
+      width: '40px',
+      height: '40px',
       borderRadius: '50%',
       backgroundColor: '#E5E6EB',
       display: 'flex',
@@ -292,7 +304,6 @@ function App() {
       color: '#1D2129',
       fontWeight: 600,
       overflow: 'hidden',
-      boxShadow: '0 2px 5px rgba(0, 0, 0, 0.1)',
       transition: 'transform 0.2s ease, box-shadow 0.2s ease'
     },
     profileImageHover: {
@@ -303,14 +314,13 @@ function App() {
       position: 'absolute',
       top: '100%',
       right: 0,
-      marginTop: '0px',
-      backgroundColor: 'white',
+      margin: '0 0 0 0',
+      background: 'white',
       borderRadius: '8px',
-      boxShadow: '0 6px 16px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.05)',
+      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
       padding: '8px 0',
-      minWidth: '150px',
-      zIndex: 1000,
-      border: '1px solid rgba(0, 0, 0, 0.08)'
+      minWidth: '180px',
+      zIndex: 1000
     },
     notificationContainer: {
       position: 'relative',
@@ -337,7 +347,7 @@ function App() {
       justifyContent: 'center'
     },
     notificationModal: {
-      backgroundColor: 'white',
+      background: 'white',
       borderRadius: '8px',
       boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
       width: '90%',
@@ -377,243 +387,474 @@ function App() {
       fontSize: '14px'
     },
     profileMenuItem: {
-      padding: '12px 20px',
+      padding: '10px 16px',
       color: '#4E5969',
       textDecoration: 'none',
       display: 'block',
       fontSize: '14px',
-      transition: 'all 0.2s ease',
+      transition: 'background-color 0.2s ease',
       cursor: 'pointer',
       textAlign: 'right'
+    },
+    mobileBottomNav: {
+      display: 'none',
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: '60px',
+      backgroundColor: '#ffffff',
+      boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.08)',
+      zIndex: 9998,
+      justifyContent: 'space-around',
+      alignItems: 'center'
+    },
+    mobileNavItem: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#4E5969',
+      textDecoration: 'none',
+      fontSize: '10px',
+      width: '33.33%',
+      height: '100%'
+    },
+    activeMobileNavItem: {
+      color: '#165DFF',
+      fontWeight: 'bold'
+    },
+    mobileNavIcon: {
+      width: '25px',
+      height: '25px',
+      marginBottom: '2px'
+    },
+    sidebar: {
+      position: 'fixed',
+      top: 0,
+      left: '-280px',
+      width: '280px',
+      height: '100vh',
+      backgroundColor: '#ffffff',
+      boxShadow: '2px 0 10px rgba(0, 0, 0, 0.1)',
+      zIndex: 10000,
+      transition: 'left 0.3s ease',
+      paddingTop: '70px',
+      boxSizing: 'border-box'
+    },
+    sidebarOpen: {
+      left: 0
+    },
+    sidebarOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      zIndex: 9999,
+      display: 'none'
+    },
+    sidebarOverlayVisible: {
+      display: 'block'
+    },
+    sidebarItem: {
+      padding: '15px 25px',
+      color: '#4E5969',
+      textDecoration: 'none',
+      display: 'block',
+      fontSize: '16px',
+      borderBottom: '1px solid #f0f2f5',
+      transition: 'background-color 0.2s ease'
+    },
+    sidebarItemHover: {
+      backgroundColor: '#F2F3F5',
+      color: '#165DFF'
+    },
+    sidebarHeader: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '60px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 20px',
+      borderBottom: '1px solid #f0f2f5'
+    },
+    closeSidebar: {
+      fontSize: '20px',
+      cursor: 'pointer',
+      color: '#4E5969'
+    },
+    mobileMenuButton: {
+      display: 'none',
+      fontSize: '24px',
+      cursor: 'pointer',
+      color: '#4E5969'
+    },
+    contentContainer: {
+      minHeight: '100vh',
+      paddingBottom: 0
     }
   };
 
+  const isMobile = window.innerWidth < 768;
+  
   return (
     <div style={styles.appContainer}>
       {!['/signin', '/signup', '/form'].includes(location.pathname) && (
-        <nav style={styles.navbar}>
-          <div style={styles.navbarLeft}>
-            <div style={styles.logo}>
-              <div style={styles.logoIcon}>S</div>
-              <span style={styles.logoText}>Smart Seat</span>
+        <>
+          <nav style={styles.navbar}>
+            <div style={styles.navbarLeft}>
+              <div style={styles.logo}>
+                <div style={styles.logoIcon}>S</div>
+                <span style={styles.logoText}>Smart Seat</span>
+              </div>
             </div>
-          </div>
-          
-          <div style={styles.navLinks}>
-            <NavLink 
-              to="/" 
-              style={({ isActive }) => ({ ...styles.navItem, ...(isActive ? styles.activeNavItem : {}) })}
-              onMouseEnter={() => setHoveredTab('home')}
-              onMouseLeave={() => setHoveredTab('')}
-              onClick={() => setActiveTab('home')}
-            >
-              Home
-              <span 
-                style={{ 
-                  ...styles.underlineIndicator,
-                  width: getUnderlineWidth('home')
-                }}
-              ></span>
-            </NavLink>
             
-            <div 
-              ref={seatRef}
-              style={styles.seatContainer}
-              onMouseEnter={() => {
-                setSeatMenuOpen(true);
-                setHoveredTab('seat');
-              }}
-              onMouseLeave={() => {
-                setSeatMenuOpen(false);
-                setHoveredTab('');
-                setSeatSubItemHover('');
-              }}
-            >
-              <div 
-                style={{ ...styles.navItem, ...(activeTab === 'seat' ? styles.activeNavItem : {}) }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveTab('seat');
-                  navigate('/seat');
-                }}
+            <div style={{
+              ...styles.mobileMenuButton,
+              display: isMobile ? 'block' : 'none'
+            }} onClick={() => setSidebarOpen(true)}>
+              ☰
+            </div>
+            
+            <div style={{
+              ...styles.navLinks,
+              display: isMobile ? 'none' : 'flex'
+            }}>
+              <NavLink 
+                to="/" 
+                style={({ isActive }) => ({ ...styles.navItem, ...(isActive ? styles.activeNavItem : {}) })}
+                onMouseEnter={() => setHoveredTab('home')}
+                onMouseLeave={() => setHoveredTab('')}
+                onClick={() => setActiveTab('home')}
               >
-                Seat
+                Home
                 <span 
                   style={{ 
                     ...styles.underlineIndicator,
-                    width: getUnderlineWidth('seat')
+                    width: getUnderlineWidth('home')
                   }}
                 ></span>
-              </div>
+              </NavLink>
               
-              {seatMenuOpen && (
+              <div 
+                ref={seatRef}
+                style={styles.seatContainer}
+                onMouseEnter={() => {
+                  setSeatMenuOpen(true);
+                  setHoveredTab('seat');
+                }}
+                onMouseLeave={() => {
+                  setSeatMenuOpen(false);
+                  setHoveredTab('');
+                  setSeatSubItemHover('');
+                }}
+              >
                 <div 
-                  style={styles.dropdownMenu}
-                  onMouseLeave={() => {
-                    setSeatMenuOpen(false);
-                    setSeatSubItemHover('');
+                  style={{ ...styles.navItem, ...(activeTab === 'seat' ? styles.activeNavItem : {}) }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveTab('seat');
+                    navigate('/seat');
                   }}
                 >
-                  <div 
+                  Seat
+                  <span 
                     style={{ 
-                      ...styles.dropdownItem,
-                      ...(seatSubItemHover === 'booking' || location.pathname === '/seat' ? styles.dropdownItemHover : {})
+                      ...styles.underlineIndicator,
+                      width: getUnderlineWidth('seat')
                     }}
-                    onClick={handleSeatBooking}
-                    onMouseEnter={() => setSeatSubItemHover('booking')}
-                    onMouseLeave={() => setSeatSubItemHover('')}
-                  >
-                    Book a Seat
-                  </div>
+                  ></span>
+                </div>
+                
+                {seatMenuOpen && (
                   <div 
-                    style={{ 
-                      ...styles.dropdownItem,
-                      ...(seatSubItemHover === 'records' || location.pathname === '/seat-records' ? styles.dropdownItemHover : {})
-                    }}
-                    onClick={() => {
+                    style={styles.dropdownMenu}
+                    onMouseLeave={() => {
                       setSeatMenuOpen(false);
-                      setActiveTab('seat');
-                      navigate('/seat-records');
+                      setSeatSubItemHover('');
                     }}
-                    onMouseEnter={() => setSeatSubItemHover('records')}
-                    onMouseLeave={() => setSeatSubItemHover('')}
                   >
-                    Booking Records
-                  </div>
-                  {userInfo?.role === 'lecturer' && (
                     <div 
                       style={{ 
                         ...styles.dropdownItem,
-                        ...(seatSubItemHover === 'tutorView' || location.pathname === '/lec-class' ? styles.dropdownItemHover : {})
+                        ...(seatSubItemHover === 'booking' || location.pathname === '/seat' ? styles.dropdownItemHover : {})
+                      }}
+                      onClick={handleSeatBooking}
+                      onMouseEnter={() => setSeatSubItemHover('booking')}
+                      onMouseLeave={() => setSeatSubItemHover('')}
+                    >
+                      Book a Seat
+                    </div>
+                    <div
+                      style={{ 
+                        ...styles.dropdownItem,
+                        ...(seatSubItemHover === 'records' || location.pathname === '/seat-records' ? styles.dropdownItemHover : {})
                       }}
                       onClick={() => {
                         setSeatMenuOpen(false);
                         setActiveTab('seat');
-                        navigate('/lec-class');
+                        navigate('/seat-records');
                       }}
-                      onMouseEnter={() => setSeatSubItemHover('tutorView')}
+                      onMouseEnter={() => setSeatSubItemHover('records')}
                       onMouseLeave={() => setSeatSubItemHover('')}
                     >
-                      Tutor View
+                      Booking Records
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <NavLink 
-              to="/mine" 
-              style={({ isActive }) => ({ ...styles.navItem, ...(isActive ? styles.activeNavItem : {}) })}
-              onMouseEnter={() => setHoveredTab('mine')}
-              onMouseLeave={() => setHoveredTab('')}
-              onClick={() => setActiveTab('mine')}
-            >
-              Mine
-              <span 
-                style={{ 
-                  ...styles.underlineIndicator,
-                  width: getUnderlineWidth('mine')
-                }}
-              ></span>
-            </NavLink>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div 
-              style={styles.notificationContainer}
-              onClick={handleNotificationClick}
-              onMouseEnter={() => setHoveredTab('notification')}
-              onMouseLeave={() => setHoveredTab('')}
-            >
-              <img 
-                src="/notification.png" 
-                alt="Notifications" 
-                style={styles.notificationIcon}
-              />
-            </div>
-            
-            <div 
-              ref={profileRef}
-              style={styles.profileContainer}
-              onMouseEnter={() => {
-                setProfileMenuOpen(true);
-              }}
-              onMouseLeave={() => setProfileMenuOpen(false)}
-            >
-              <div 
-                style={{ 
-                  ...styles.profileImage,
-                  ...(profileMenuOpen ? styles.profileImageHover : {})
-                }}
-                onClick={goToMine}
+                    {userInfo?.role === 'lecturer' && (
+                      <div 
+                        style={{ 
+                          ...styles.dropdownItem,
+                          ...(seatSubItemHover === 'tutorView' || location.pathname === '/lec-class' ? styles.dropdownItemHover : {})
+                        }}
+                        onClick={() => {
+                          setSeatMenuOpen(false);
+                          setActiveTab('seat');
+                          navigate('/lec-class');
+                        }}
+                        onMouseEnter={() => setSeatSubItemHover('tutorView')}
+                        onMouseLeave={() => setSeatSubItemHover('')}
+                      >
+                        Tutor View
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              
+              <NavLink 
+                to="/mine" 
+                style={({ isActive }) => ({ ...styles.navItem, ...(isActive ? styles.activeNavItem : {}) })}
+                onMouseEnter={() => setHoveredTab('mine')}
+                onMouseLeave={() => setHoveredTab('')}
+                onClick={() => setActiveTab('mine')}
               >
-                {userInfo?.email?.charAt(0).toUpperCase() || localStorage.getItem('savedEmail')?.charAt(0).toUpperCase() || 'U'}
+                Mine
+                <span 
+                  style={{ 
+                    ...styles.underlineIndicator,
+                    width: getUnderlineWidth('mine')
+                  }}
+                ></span>
+              </NavLink>
+            </div>
+            
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '20px',
+              display: isMobile ? 'none' : 'flex'
+            }}>
+              <div 
+                style={styles.notificationContainer}
+                onClick={handleNotificationClick}
+                onMouseEnter={() => setHoveredTab('notification')}
+                onMouseLeave={() => setHoveredTab('')}
+              >
+                <img 
+                  src="/notification.png" 
+                  alt="Notifications" 
+                  style={styles.notificationIcon}
+                />
               </div>
               
-              {profileMenuOpen && (
+              <div 
+                ref={profileRef}
+                style={styles.profileContainer}
+                onMouseEnter={() => {
+                  setProfileMenuOpen(true);
+                }}
+                onMouseLeave={() => setProfileMenuOpen(false)}
+              >
                 <div 
-                  style={styles.profileMenu}
-                  onMouseLeave={() => setProfileMenuOpen(false)}
+                  style={{ 
+                    ...styles.profileImage,
+                    ...(profileMenuOpen ? styles.profileImageHover : {})
+                  }}
+                  onClick={goToMine}
                 >
-                  <div 
-                    style={styles.profileMenuItem}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditProfile();
-                    }}
-                  >
-                    Edit Profile
-                  </div>
-                  <div 
-                    style={styles.profileMenuItem}
-                    onClick={handleLogout}
-                  >
-                    Logout
-                  </div>
+                  {userInfo?.email?.charAt(0).toUpperCase() || localStorage.getItem('savedEmail')?.charAt(0).toUpperCase() || 'U'}
                 </div>
-              )}
+                
+                {profileMenuOpen && (
+                  <div 
+                    style={styles.profileMenu}
+                    onMouseLeave={() => setProfileMenuOpen(false)}
+                  >
+                    <div 
+                      style={styles.profileMenuItem}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditProfile();
+                      }}
+                    >
+                      Edit Profile
+                    </div>
+                    <div 
+                      style={styles.profileMenuItem}
+                      onClick={handleLogout}
+                    >
+                      Logout
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </nav>
+
+          <div style={{
+            ...styles.sidebar,
+            ...(sidebarOpen ? styles.sidebarOpen : {})
+          }}>
+            <div style={styles.sidebarHeader}>
+              <div style={styles.logoText}>Menu</div>
+              <div style={styles.closeSidebar} onClick={() => setSidebarOpen(false)}>×</div>
+            </div>
+            <div 
+              style={styles.sidebarItem}
+              onClick={() => {
+                handleNotificationClick();
+                setSidebarOpen(false);
+              }}
+            >
+              Notifications
+            </div>
+            <div 
+              style={styles.sidebarItem}
+              onClick={handleSeatBooking}
+            >
+              Book a Seat
+            </div>
+            <div 
+              style={styles.sidebarItem}
+              onClick={() => {
+                setSidebarOpen(false);
+                navigate('/seat-records');
+              }}
+            >
+              Booking Records
+            </div>
+            {userInfo?.role === 'lecturer' && (
+              <div 
+                style={styles.sidebarItem}
+                onClick={() => {
+                  setSidebarOpen(false);
+                  navigate('/lec-class');
+                }}
+              >
+                Tutor View
+              </div>
+            )}
+            <div 
+              style={styles.sidebarItem}
+              onClick={handleEditProfile}
+            >
+              Edit Profile
+            </div>
+            <div 
+              style={styles.sidebarItem}
+              onClick={handleLogout}
+            >
+              Logout
             </div>
           </div>
-        </nav>
-      )}
-      
-      {notificationOpen && (
-        <div style={styles.modalOverlay} onClick={() => setNotificationOpen(false)}>
+
           <div 
-            style={styles.notificationModal}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={styles.notificationModalContent}>
-              <div style={styles.notificationHeader}>Booking Reminders</div>
-              {notifications.length > 0 ? (
-                <ul style={styles.notificationList}>
-                  {notifications.map(notification => (
-                    <li key={notification.id} style={styles.notificationItem}>
-                      Booking Start Reminder: Your booking is about to start. 
-                      Room: {notification.room}, Seat: {notification.seat_number}, 
-                      Date: {formatDate(notification.date)}, Time: {notification.start_time} - {notification.end_time}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div style={styles.noNotification}>No booking reminders available.</div>
-              )}
-            </div>
+            style={{
+              ...styles.sidebarOverlay,
+              ...(sidebarOpen ? styles.sidebarOverlayVisible : {})
+            }}
+            onClick={() => setSidebarOpen(false)}
+          ></div>
+
+          <div style={{
+            ...styles.mobileBottomNav,
+            display: isMobile ? 'flex' : 'none'
+          }}>
+            <NavLink 
+              to="/" 
+              style={({ isActive }) => ({ 
+                ...styles.mobileNavItem, 
+                ...(isActive ? styles.activeMobileNavItem : {}) 
+              })}
+              onClick={() => setActiveTab('home')}
+            >
+              <img style={styles.mobileNavIcon} src={'/home.png'}></img>
+              <span>Home</span>
+            </NavLink>
+            <NavLink 
+              to="/seat" 
+              style={({ isActive }) => ({ 
+                ...styles.mobileNavItem, 
+                ...(isActive ? styles.activeMobileNavItem : {}) 
+              })}
+              onClick={() => setActiveTab('seat')}
+            >
+              <img style={styles.mobileNavIcon} src={'/seat.png'}></img>
+              <span>Seat</span>
+            </NavLink>
+            <NavLink 
+              to="/mine" 
+              style={({ isActive }) => ({ 
+                ...styles.mobileNavItem, 
+                ...(isActive ? styles.activeMobileNavItem : {}) 
+              })}
+              onClick={() => setActiveTab('mine')}
+            >
+              <img style={styles.mobileNavIcon} src={'/user.png'}></img>
+              <span>Mine</span>
+            </NavLink>
           </div>
-        </div>
+        </>
       )}
       
-      <Routes>
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/form" element={<PrivateRoute element={<Form />} />} />
-        <Route path="/" element={<PrivateRoute element={<Home />} />} />
-        <Route path="/seat" element={<PrivateRoute element={<Seat />} />} />
-        <Route path="/seat-records" element={<PrivateRoute element={<SeatRecords />} />} />
-        <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
-        <Route path="/lec-class" element={<PrivateRoute element={<LecClass />} requireLecturer={true} />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <div style={{
+        ...styles.contentContainer,
+        paddingBottom: isMobile ? '60px' : 0
+      }}>
+        {notificationOpen && (
+          <div style={styles.modalOverlay} onClick={() => setNotificationOpen(false)}>
+            <div 
+              style={styles.notificationModal}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={styles.notificationModalContent}>
+                <div style={styles.notificationHeader}>Booking Reminders</div>
+                {notifications.length > 0 ? (
+                  <ul style={styles.notificationList}>
+                    {notifications.map(notification => (
+                      <li key={notification.id} style={styles.notificationItem}>
+                        Booking Start Reminder: Your booking is about to start. 
+                        Room: {notification.room}, Seat: {notification.seat_number}, 
+                        Date: {formatDate(notification.date)}, Time: {notification.start_time} - {notification.end_time}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div style={styles.noNotification}>No booking reminders available.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <Routes>
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/form" element={<PrivateRoute element={<Form />} />} />
+          <Route path="/" element={<PrivateRoute element={<Home />} />} />
+          <Route path="/seat" element={<PrivateRoute element={<Seat />} />} />
+          <Route path="/seat-records" element={<PrivateRoute element={<SeatRecords />} />} />
+          <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
+          <Route path="/lec-class" element={<PrivateRoute element={<LecClass />} requireLecturer={true} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
     </div>
   );
 }

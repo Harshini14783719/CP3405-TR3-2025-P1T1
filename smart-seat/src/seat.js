@@ -160,15 +160,19 @@ const Seat = () => {
   };
 
   const renderCanteenSeats = () => {
-    const columns = 3;
+    const isMobile = window.innerWidth < 768;
+    const columns = isMobile ? 3 : 3;
     const tablesPerColumn = 5;
-    const seatsPerTable = 3;
+    const seatsPerTable = isMobile ? 2 : 3;
+    const seatSize = isMobile ? 25 : 30;
+    const seatMargin = isMobile ? 3 : 8;
+    
     return (
-      <div className="canteen-layout">
+      <div className="canteen-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
         {[...Array(columns)].map((_, colIndex) => (
           <div key={`col-${colIndex + 1}`} className="canteen-column">
             {[...Array(tablesPerColumn)].map((_, tableIndex) => (
-              <div key={`table-${tableIndex + 1}`} className="table horizontal-table">
+              <div key={`table-${tableIndex + 1}`} className="table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
                 <div className="table-seats top-seats">
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2;
@@ -179,6 +183,7 @@ const Seat = () => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
                       </div>
@@ -195,6 +200,7 @@ const Seat = () => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
                       </div>
@@ -210,15 +216,19 @@ const Seat = () => {
   };
 
   const renderLibrarySeats = () => {
-    const columns = 2;
+    const isMobile = window.innerWidth < 768;
+    const columns = isMobile ? 2 : 2;
     const tablesPerColumn = libraryFloor === '1' ? 4 : 8;
-    const seatsPerTable = 4;
+    const seatsPerTable = isMobile ? 3 : 4;
+    const seatSize = isMobile ? 25 : 30;
+    const seatMargin = isMobile ? 3 : 8;
+    
     return (
-      <div className="library-layout">
+      <div className="library-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
         {[...Array(columns)].map((_, colIndex) => (
           <div key={`col-${colIndex + 1}`} className="library-column">
             {[...Array(tablesPerColumn)].map((_, tableIndex) => (
-              <div key={`table-${tableIndex + 1}`} className="table horizontal-table">
+              <div key={`table-${tableIndex + 1}`} className="table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
                 <div className="table-seats top-seats">
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2;
@@ -229,6 +239,7 @@ const Seat = () => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
                       </div>
@@ -245,6 +256,7 @@ const Seat = () => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
                       </div>
@@ -260,11 +272,15 @@ const Seat = () => {
   };
 
   const renderClassroomType1 = () => {
+    const isMobile = window.innerWidth < 768;
     const roomNum = classroomRoom.split('-')[1];
     const is01To07 = roomNum && parseInt(roomNum, 10) >= 1 && parseInt(roomNum, 10) <= 7;
+    const seatSize = isMobile ? 25 : 30;
+    const seatMargin = isMobile ? 3 : 8;
+    
     return (
-      <div className={`classroom-type1 ${is01To07 ? 'classroom-01-07' : ''}`}>
-        <div className="left-wall-table table horizontal-table">
+      <div className={`classroom-type1 ${is01To07 ? 'classroom-01-07' : ''}`} style={{ width: isMobile ? 'auto' : (is01To07 ? 1200 : 1000), minWidth: isMobile ? '600px' : 'auto' }}>
+        <div className="left-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
           <div className="table-seats top-seats">
             {[1, 2, 3].map(seatNum => (
               <div 
@@ -272,6 +288,7 @@ const Seat = () => {
                 className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
+                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
                 {seatNum}
               </div>
@@ -284,13 +301,14 @@ const Seat = () => {
                 className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
+                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
                 {seatNum}
               </div>
             ))}
           </div>
         </div>
-        <div className="right-wall-table table horizontal-table">
+        <div className="right-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
           <div className="table-seats top-seats">
             {[7, 8, 9].map(seatNum => (
               <div 
@@ -298,6 +316,7 @@ const Seat = () => {
                 className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
+                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
                 {seatNum}
               </div>
@@ -310,6 +329,7 @@ const Seat = () => {
                 className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
+                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
                 {seatNum}
               </div>
@@ -318,7 +338,7 @@ const Seat = () => {
         </div>
         <div className="front-wall-tables">
           {[2, 1, 3].map(tableNum => (
-            <div key={`front-table-${tableNum}`} className="table vertical-table">
+            <div key={`front-table-${tableNum}`} className="table vertical-table" style={{ height: isMobile ? 140 : 180 }}>
               {!is01To07 && (
                 <>
                   <div className="table-seats top-seats">
@@ -328,6 +348,7 @@ const Seat = () => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
                       </div>
@@ -340,6 +361,7 @@ const Seat = () => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
                       </div>
@@ -354,6 +376,7 @@ const Seat = () => {
                     className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
+                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
                   >
                     {seatNum}
                   </div>
@@ -366,6 +389,7 @@ const Seat = () => {
                     className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
+                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
                   >
                     {seatNum}
                   </div>
@@ -376,7 +400,7 @@ const Seat = () => {
         </div>
         <div className="back-wall-tables">
           {[2, 1, 3].map(tableNum => (
-            <div key={`back-table-${tableNum}`} className="table vertical-table">
+            <div key={`back-table-${tableNum}`} className="table vertical-table" style={{ height: isMobile ? 140 : 180 }}>
               {!is01To07 && (
                 <>
                   <div className="table-seats top-seats">
@@ -386,6 +410,7 @@ const Seat = () => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
                       </div>
@@ -398,6 +423,7 @@ const Seat = () => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
                       </div>
@@ -412,6 +438,7 @@ const Seat = () => {
                     className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
+                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
                   >
                     {seatNum}
                   </div>
@@ -424,6 +451,7 @@ const Seat = () => {
                     className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
+                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
                   >
                     {seatNum}
                   </div>
@@ -437,11 +465,15 @@ const Seat = () => {
   };
 
   const renderClassroomType2 = () => {
+    const isMobile = window.innerWidth < 768;
     const rows = 10;
-    const seatsPerSide = 7;
+    const seatsPerSide = isMobile ? 5 : 7;
     const totalSeatsPerRow = seatsPerSide * 2;
+    const seatSize = isMobile ? 25 : 30;
+    const seatMargin = isMobile ? 2 : 0;
+    
     return (
-      <div className="classroom-type2">
+      <div className="classroom-type2" style={{ width: isMobile ? 'auto' : 900, minWidth: isMobile ? '500px' : 'auto' }}>
         <div className="staircase-area"></div>
         <div className="classroom-type2-rows">
           {[...Array(rows)].map((_, rowIndex) => {
@@ -452,6 +484,7 @@ const Seat = () => {
               <div 
                 key={`row-${rowNum}`} 
                 className={`classroom-row ${isStaircaseRow ? 'staircase-row' : ''}`}
+                style={{ gap: isMobile ? 10 : 30 }}
               >
                 <div className="seat-group left-group">
                   {[...Array(seatsPerSide)].map((_, seatIndex) => {
@@ -462,6 +495,7 @@ const Seat = () => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
+                        style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
                       >
                         {seatNum}
                       </div>
@@ -477,6 +511,7 @@ const Seat = () => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
+                        style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
                       >
                         {seatNum}
                       </div>
@@ -508,12 +543,54 @@ const Seat = () => {
     return null;
   };
 
+  const renderSelectionSummary = () => (
+    <div className="selection-summary">
+      <h3>Selection Summary</h3>
+      <p>Location: {location ? location.charAt(0).toUpperCase() + location.slice(1) : 'Not selected'}</p>
+      {location === 'library' && (
+        <p>Floor: {libraryFloor ? `Floor ${libraryFloor}` : 'Not selected'}</p>
+      )}
+      {location === 'classroom' && (
+        <>
+          <p>Building: {classroomBuilding || 'Not selected'}</p>
+          <p>Floor: {classroomFloor ? `Floor ${classroomFloor}` : (classroomBuilding === 'E' ? 'Floor 2' : 'Not selected')}</p>
+          <p>Room: {classroomRoom || 'Not selected'}</p>
+        </>
+      )}
+      {selectedDate && selectedHour && (
+        <p>Time: {selectedDate} {selectedHour}:00 - {endTime}:00</p>
+      )}
+      {selectedSeats.length > 0 && (
+        <div className="selected-seats">
+          <h4>Selected Seats:</h4>
+          {selectedSeats.map(seat => (
+            <p key={seat}>{seat}</p>
+          ))}
+        </div>
+      )}
+      <button
+        className="booking-button"
+        onClick={handleBooking}
+        disabled={selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier() || loading}
+      >
+        Confirm Booking
+      </button>
+    </div>
+  );
+
   return (
     <div>
       <style>
         {`
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        
         .seat-container {
   display: flex;
+  flex-direction: row;
   width: 100%;
   min-height: 100vh;
   margin-top: 45px;
@@ -529,7 +606,6 @@ const Seat = () => {
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   z-index: 101;
-  transition: top 0.04s ease;
 }
 .seat-sidebar {
   width: 28%;
@@ -656,16 +732,20 @@ const Seat = () => {
   font-size: 1.4rem;
   font-weight: 600;
 }
-.seat-map {
+.seat-map-container {
   background-color: #ffffff;
   border-radius: 8px;
   min-height: 600px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   padding: 2.5rem;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+.seat-map {
+  min-height: 600px;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: auto;
 }
 .table {
   background-color: #e2e8f0;
@@ -849,10 +929,126 @@ const Seat = () => {
   position: relative;
   z-index: 2;
 }
+.mobile-summary {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .seat-container {
+    flex-direction: column;
+    margin-top: 20px;
+  }
+  
+  .seat-sidebar, .seat-main {
+    width: 100%;
+    padding: 1.5rem;
+  }
+  
+  .seat-sidebar {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+  
+  .seat-content h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1.2rem;
+  }
+  
+  .seat {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+    margin: 0 5px;
+  }
+  
+  .seat-map-container {
+    padding: 1rem;
+    min-height: 400px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .horizontal-table {
+    width: 140px;
+    height: 50px;
+  }
+  
+  .vertical-table {
+    width: 50px;
+    height: 140px;
+  }
+  
+  .classroom-type1, .classroom-01-07, .classroom-type2 {
+    height: auto;
+    padding: 20px 10px;
+    overflow: visible;
+    min-height: 400px;
+  }
+  
+  .front-wall-tables, .back-wall-tables {
+    gap: 30px !important;
+    flex-wrap: wrap;
+    width: 100% !important;
+  }
+  
+  .left-wall-table, .right-wall-table {
+    position: relative;
+    left: 0;
+    right: 0;
+    top: 0;
+    transform: none;
+    margin: 20px auto;
+  }
+  
+  .front-wall-tables {
+    top: 20px;
+    margin-bottom: 40px;
+  }
+  
+  .back-wall-tables {
+    bottom: 20px;
+    margin-top: 40px;
+  }
+  
+  .classroom-row {
+    gap: 15px;
+  }
+  
+  .canteen-column, .library-column {
+    gap: 20px;
+  }
+  
+  .seat-notification {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    top: 60px;
+  }
+  
+  .booking-button {
+    padding: 1rem;
+    font-size: 1.1rem;
+  }
+  
+  .sidebar-summary {
+    display: none;
+  }
+  
+  .mobile-summary {
+    display: block;
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+}
         `}
       </style>
       {selectedSeats.length > 0 && (
-        <div className="seat-notification" style={{ top: scrollY >= 80 ? 0 : '80px' }}>
+        <div className="seat-notification">
           <p>You have selected {selectedSeats.length} seat(s). Please confirm your reservation.</p>
         </div>
       )}
@@ -978,37 +1174,8 @@ const Seat = () => {
               </div>
             </div>
           )}
-          <div className="selection-summary">
-            <h3>Selection Summary</h3>
-            <p>Location: {location ? location.charAt(0).toUpperCase() + location.slice(1) : 'Not selected'}</p>
-            {location === 'library' && (
-              <p>Floor: {libraryFloor ? `Floor ${libraryFloor}` : 'Not selected'}</p>
-            )}
-            {location === 'classroom' && (
-              <>
-                <p>Building: {classroomBuilding || 'Not selected'}</p>
-                <p>Floor: {classroomFloor ? `Floor ${classroomFloor}` : (classroomBuilding === 'E' ? 'Floor 2' : 'Not selected')}</p>
-                <p>Room: {classroomRoom || 'Not selected'}</p>
-              </>
-            )}
-            {selectedDate && selectedHour && (
-              <p>Time: {selectedDate} {selectedHour}:00 - {endTime}:00</p>
-            )}
-            {selectedSeats.length > 0 && (
-              <div className="selected-seats">
-                <h4>Selected Seats:</h4>
-                {selectedSeats.map(seat => (
-                  <p key={seat}>{seat}</p>
-                ))}
-              </div>
-            )}
-            <button
-              className="booking-button"
-              onClick={handleBooking}
-              disabled={selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier() || loading}
-            >
-              Confirm Booking
-            </button>
+          <div className="selection-summary sidebar-summary">
+            {renderSelectionSummary()}
           </div>
         </div>
         <div className="seat-main">
@@ -1026,8 +1193,13 @@ const Seat = () => {
               ) : (
                 <div className="location-view">
                   <h2>Canteen Seating</h2>
-                  <div className="seat-map">
-                    {renderSeatMap()}
+                  <div className="seat-map-container">
+                    <div className="seat-map">
+                      {renderSeatMap()}
+                    </div>
+                  </div>
+                  <div className="mobile-summary">
+                    {renderSelectionSummary()}
                   </div>
                 </div>
               )
@@ -1043,8 +1215,13 @@ const Seat = () => {
               ) : (
                 <div className="location-view">
                   <h2>Library - Floor {libraryFloor}</h2>
-                  <div className="seat-map">
-                    {renderSeatMap()}
+                  <div className="seat-map-container">
+                    <div className="seat-map">
+                      {renderSeatMap()}
+                    </div>
+                  </div>
+                  <div className="mobile-summary">
+                    {renderSelectionSummary()}
                   </div>
                 </div>
               )
@@ -1060,8 +1237,13 @@ const Seat = () => {
               ) : (
                 <div className="location-view">
                   <h2>Classroom {classroomRoom}</h2>
-                  <div className="seat-map">
-                    {renderSeatMap()}
+                  <div className="seat-map-container">
+                    <div className="seat-map">
+                      {renderSeatMap()}
+                    </div>
+                  </div>
+                  <div className="mobile-summary">
+                    {renderSelectionSummary()}
                   </div>
                 </div>
               )

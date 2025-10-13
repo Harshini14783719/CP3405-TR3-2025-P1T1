@@ -4,7 +4,7 @@ const bookingController = require('../controllers/bookingController');
 
 router.get('/', bookingController.getAllBookings);
 router.get('/getBookedSeats', bookingController.getBookedSeats);
-router.get('/updateExpiredBookings', bookingController.updateExpiredBookings);
+router.post('/update-expired', bookingController.updateExpiredBookings);
 router.get('/:id', bookingController.getBookingById);
 router.post('/', bookingController.createbooking);
 router.put('/:id', bookingController.updatebooking);

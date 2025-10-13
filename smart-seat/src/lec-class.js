@@ -441,8 +441,14 @@ const LecClass = () => {
     <div>
       <style>
         {`
-        .tutor-container {
+        * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+.tutor-container {
   display: flex;
+  flex-direction: row;
   width: 100%;
   min-height: 100vh;
   margin-top: 45px;
@@ -671,6 +677,7 @@ const LecClass = () => {
   height: 700px;
   border: 1px solid #e2e8f0;
   padding: 60px;
+  transform-origin: center;
 }
 .classroom-01-07 {
   width: 1200px;
@@ -772,6 +779,179 @@ const LecClass = () => {
   margin: 0.3rem 0;
   font-size: 0.9rem;
   color: #334155;
+}
+
+@media (max-width: 768px) {
+  .tutor-container {
+    flex-direction: column;
+    margin-top: 0;
+  }
+  .tutor-sidebar, .tutor-main {
+    width: 100%;
+    padding: 1.5rem;
+  }
+  .tutor-sidebar {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+  .tutor-sidebar h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+  }
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  .form-group label {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+  .form-control {
+    padding: 0.75rem 0.9rem;
+    font-size: 0.95rem;
+  }
+  .end-time-display {
+    padding: 0.75rem 0.9rem;
+    font-size: 0.95rem;
+  }
+  .selection-summary {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+  }
+  .selection-summary h3 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+  .selection-summary p {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+  }
+  .tutor-content h1 {
+    font-size: 1.6rem;
+    margin-bottom: 1.8rem;
+  }
+  .empty-state {
+    min-height: 300px;
+    font-size: 1rem;
+    padding: 1.5rem;
+  }
+  .loading-state {
+    height: 400px;
+    font-size: 1rem;
+  }
+  .location-view h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+  .booking-stats {
+    flex-direction: column;
+    padding: 1.2rem 1.5rem;
+    gap: 1rem;
+  }
+  .stat-card {
+    padding: 0.8rem 0;
+    width: 100%;
+  }
+  .stat-card:not(:last-child) {
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .stat-title {
+    font-size: 0.85rem;
+  }
+  .stat-value, .stat-percentage {
+    font-size: 1.3rem;
+  }
+  .seat-map {
+    min-height: 400px;
+    padding: 1.5rem;
+  }
+  .seat {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+    margin: 0 4px;
+  }
+  .horizontal-table {
+    width: 140px;
+    height: 50px;
+  }
+  .vertical-table {
+    width: 50px;
+    height: 140px;
+  }
+  .left-seats, .right-seats {
+    gap: 10px;
+  }
+  .front-wall-tables, .back-wall-tables {
+    gap: 50px;
+  }
+  .classroom-type1 {
+    transform: scale(0.7);
+    width: 1000px;
+    height: 700px;
+    padding: 60px;
+    margin: -100px 0;
+  }
+  .classroom-01-07 {
+    transform: scale(0.6);
+    width: 1200px;
+    margin: -150px 0;
+  }
+  .classroom-type2 {
+    width: 900px;
+    transform: translateX(30px);
+  }
+  .classroom-row {
+    gap: 15px;
+  }
+  .seat-detail-popup {
+    min-width: 150px;
+    padding: 0.6rem 1rem;
+  }
+  .popup-item {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .tutor-sidebar, .tutor-main {
+    padding: 1rem;
+  }
+  .tutor-sidebar h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1.2rem;
+  }
+  .form-group {
+    margin-bottom: 1.2rem;
+  }
+  .tutor-content h1 {
+    font-size: 1.4rem;
+    margin-bottom: 1.5rem;
+  }
+  .location-view h2 {
+    font-size: 1.1rem;
+  }
+  .seat {
+    width: 22px;
+    height: 22px;
+    font-size: 9px;
+    margin: 0 2px;
+  }
+  .classroom-type1 {
+    transform: scale(0.5);
+    margin: -200px 0;
+  }
+  .classroom-01-07 {
+    transform: scale(0.45);
+    margin: -250px 0;
+  }
+  .classroom-type2 {
+    width: 900px;
+    transform: translateX(20px) scale(0.7);
+    margin: -100px 0;
+  }
+  .front-wall-tables, .back-wall-tables {
+    gap: 30px;
+  }
 }
         `}
       </style>

@@ -70,132 +70,222 @@ const SignIn = () => {
     }
   };
 
-  const styles = {
-    signinContainer: {
-      position: 'relative',
-      minHeight: '100vh',
-      display: 'flex',
-      justifyContent: 'flex-start',
-      alignItems: 'center',
-      padding: '0 120px',
-      margin: 0,
-      boxSizing: 'border-box',
-      fontFamily: "'Inter', system-ui, sans-serif",
-      overflow: 'hidden'
-    },
-    signinBg: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      backgroundImage: "url('/bg.jpg')",
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      zIndex: -2
-    },
-    signinBgOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      backgroundColor: 'rgba(17, 24, 39, 0.45)',
-      backdropFilter: 'blur(6px)',
-      zIndex: -1
-    },
-    signinForm: {
-      backgroundColor: '#FFFFFF',
-      padding: '56px 48px',
-      borderRadius: '16px',
-      boxShadow: '0 16px 48px rgba(0, 0, 0, 0.18)',
-      width: '100%',
-      maxWidth: '450px',
-      textAlign: 'left',
-      borderTop: '5px solid #2563EB'
-    },
-    systemTitle: {
-      fontSize: '28px',
-      fontWeight: 700,
-      color: '#111827',
-      margin: 0,
-      marginBottom: '12px',
-      letterSpacing: '-0.6px'
-    },
-    pageTitle: {
-      fontSize: '19px',
-      fontWeight: 600,
-      color: '#4B5563',
-      margin: 0,
-      marginBottom: '40px',
-      letterSpacing: '-0.3px'
-    },
-    formGroup: {
-      marginBottom: '28px',
-      width: '100%'
-    },
-    formInput: {
-      width: '100%',
-      padding: '15px 18px',
-      border: '1px solid #D1D5DB',
-      borderRadius: '10px',
-      fontSize: '17px',
-      color: '#111827',
-      boxSizing: 'border-box',
-      outline: 'none'
-    },
-    formInputFocus: {
-      borderColor: '#2563EB',
-      boxShadow: '0 0 0 4px rgba(37, 99, 235, 0.15)'
-    },
-    rememberMe: {
-      display: 'flex',
-      alignItems: 'center',
-      marginBottom: '36px',
-      gap: '10px'
-    },
-    rememberCheckbox: {
-      width: '20px',
-      height: '20px',
-      accentColor: '#2563EB',
-      cursor: 'pointer',
-      border: '1px solid #D1D5DB',
-      borderRadius: '4px'
-    },
-    rememberLabel: {
-      fontSize: '15px',
-      color: '#4B5563',
-      cursor: 'pointer',
-      userSelect: 'none',
-      letterSpacing: '-0.2px'
-    },
-    signinBtn: {
-      width: '100%',
-      padding: '16px',
-      backgroundColor: '#2563EB',
-      color: '#FFFFFF',
-      border: 'none',
-      borderRadius: '10px',
-      fontSize: '17px',
-      fontWeight: 600,
-      cursor: 'pointer',
-      letterSpacing: '-0.2px',
-      marginBottom: '32px'
-    },
-    signupLink: {
-      fontSize: '15px',
-      color: '#4B5563',
-      textAlign: 'center',
-      letterSpacing: '-0.2px'
-    },
-    linkText: {
-      color: '#2563EB',
-      textDecoration: 'none',
-      fontWeight: 600,
-      marginLeft: '4px'
+  const getStyles = () => {
+    const baseStyles = {
+      signinContainer: {
+        position: 'relative',
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+        padding: '0 120px',
+        margin: 0,
+        boxSizing: 'border-box',
+        fontFamily: "'Inter', system-ui, sans-serif",
+        overflow: 'hidden'
+      },
+      signinBg: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundImage: "url('/bg.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        zIndex: -2
+      },
+      signinBgOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'rgba(17, 24, 39, 0.45)',
+        backdropFilter: 'blur(6px)',
+        zIndex: -1
+      },
+      signinForm: {
+        backgroundColor: '#FFFFFF',
+        padding: '56px 48px',
+        borderRadius: '16px',
+        boxShadow: '0 16px 48px rgba(0, 0, 0, 0.18)',
+        width: '100%',
+        maxWidth: '450px',
+        textAlign: 'left',
+        borderTop: '5px solid #2563EB'
+      },
+      systemTitle: {
+        fontSize: '28px',
+        fontWeight: 700,
+        color: '#111827',
+        margin: 0,
+        marginBottom: '12px',
+        letterSpacing: '-0.6px'
+      },
+      pageTitle: {
+        fontSize: '19px',
+        fontWeight: 600,
+        color: '#4B5563',
+        margin: 0,
+        marginBottom: '40px',
+        letterSpacing: '-0.3px'
+      },
+      formGroup: {
+        marginBottom: '28px',
+        width: '100%'
+      },
+      formInput: {
+        width: '100%',
+        padding: '15px 18px',
+        border: '1px solid #D1D5DB',
+        borderRadius: '10px',
+        fontSize: '17px',
+        color: '#111827',
+        boxSizing: 'border-box',
+        outline: 'none'
+      },
+      formInputFocus: {
+        borderColor: '#2563EB',
+        boxShadow: '0 0 0 4px rgba(37, 99, 235, 0.15)'
+      },
+      rememberMe: {
+        display: 'flex',
+        alignItems: 'center',
+        marginBottom: '36px',
+        gap: '10px'
+      },
+      rememberCheckbox: {
+        width: '20px',
+        height: '20px',
+        accentColor: '#2563EB',
+        cursor: 'pointer',
+        border: '1px solid #D1D5DB',
+        borderRadius: '4px'
+      },
+      rememberLabel: {
+        fontSize: '15px',
+        color: '#4B5563',
+        cursor: 'pointer',
+        userSelect: 'none',
+        letterSpacing: '-0.2px'
+      },
+      signinBtn: {
+        width: '100%',
+        padding: '16px',
+        backgroundColor: '#2563EB',
+        color: '#FFFFFF',
+        border: 'none',
+        borderRadius: '10px',
+        fontSize: '17px',
+        fontWeight: 600,
+        cursor: 'pointer',
+        letterSpacing: '-0.2px',
+        marginBottom: '32px'
+      },
+      signupLink: {
+        fontSize: '15px',
+        color: '#4B5563',
+        textAlign: 'center',
+        letterSpacing: '-0.2px'
+      },
+      linkText: {
+        color: '#2563EB',
+        textDecoration: 'none',
+        fontWeight: 600,
+        marginLeft: '4px'
+      }
+    };
+
+    // Tablet styles (768px to 1024px)
+    if (window.innerWidth <= 1024 && window.innerWidth > 768) {
+      return {
+        ...baseStyles,
+        signinContainer: {
+          ...baseStyles.signinContainer,
+          padding: '0 60px'
+        },
+        signinForm: {
+          ...baseStyles.signinForm,
+          maxWidth: '400px',
+          padding: '48px 40px'
+        },
+        systemTitle: {
+          ...baseStyles.systemTitle,
+          fontSize: '26px'
+        },
+        pageTitle: {
+          ...baseStyles.pageTitle,
+          fontSize: '18px',
+          marginBottom: '32px'
+        }
+      };
     }
+
+    // Mobile styles (<= 768px)
+    if (window.innerWidth <= 768) {
+      return {
+        ...baseStyles,
+        signinContainer: {
+          ...baseStyles.signinContainer,
+          padding: '0 24px',
+          justifyContent: 'center'
+        },
+        signinForm: {
+          ...baseStyles.signinForm,
+          maxWidth: '100%',
+          padding: '40px 24px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)'
+        },
+        systemTitle: {
+          ...baseStyles.systemTitle,
+          fontSize: '24px'
+        },
+        pageTitle: {
+          ...baseStyles.pageTitle,
+          fontSize: '17px',
+          marginBottom: '28px'
+        },
+        formGroup: {
+          ...baseStyles.formGroup,
+          marginBottom: '24px'
+        },
+        formInput: {
+          ...baseStyles.formInput,
+          padding: '14px 16px',
+          fontSize: '16px'
+        },
+        rememberMe: {
+          ...baseStyles.rememberMe,
+          marginBottom: '28px'
+        },
+        signinBtn: {
+          ...baseStyles.signinBtn,
+          padding: '14px',
+          fontSize: '16px',
+          marginBottom: '24px'
+        },
+        signupLink: {
+          ...baseStyles.signupLink,
+          fontSize: '14px'
+        }
+      };
+    }
+
+    return baseStyles;
   };
+
+  const [styles, setStyles] = useState(getStyles());
+
+  useEffect(() => {
+    const handleResize = () => {
+      setStyles(getStyles());
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div style={styles.signinContainer}>
@@ -217,7 +307,7 @@ const SignIn = () => {
             style={styles.formInput}
             onFocus={(e) => Object.assign(e.target.style, styles.formInputFocus)}
             onBlur={(e) => {
-  e.target.style.border = '1px solid #D1D5DB';
+              e.target.style.border = '1px solid #D1D5DB';
               e.target.style.boxShadow = 'none';
             }}
           />
@@ -234,7 +324,7 @@ const SignIn = () => {
             style={styles.formInput}
             onFocus={(e) => Object.assign(e.target.style, styles.formInputFocus)}
             onBlur={(e) => {
-  e.target.style.border = '1px solid #D1D5DB';
+              e.target.style.border = '1px solid #D1D5DB';
               e.target.style.boxShadow = 'none';
             }}
             autoComplete="current-password"
