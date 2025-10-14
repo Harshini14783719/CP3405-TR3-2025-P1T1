@@ -82,7 +82,7 @@ const Form = () => {
           localStorage.setItem('currentUser', JSON.stringify(data.user));
         }
         localStorage.setItem('isLoggedIn', 'true');
-        navigate('/', { replace: true });
+        navigate('/home', { replace: true });
       } else {
         alert(data.message);
       }

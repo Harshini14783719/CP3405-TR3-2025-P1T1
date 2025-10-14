@@ -58,7 +58,7 @@ const SignIn = () => {
         }
         
         if (data.user.profileCompleted) {
-          navigate('/', { replace: true });
+          navigate('/home', { replace: true });
         } else {
           navigate(`/form?role=${data.user.role}`, { replace: true });
         }

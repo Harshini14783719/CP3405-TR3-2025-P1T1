@@ -43,11 +43,13 @@ function App() {
 
   useEffect(() => {
     let path = location.pathname;
-    if (path === '/') {
+    if (path === '/home') {
       setActiveTab('home');
-    } else if (path.startsWith('/seat') || path === '/lec-class') {
+    } 
+    else if (path.startsWith('/seat') || path === '/lec-class') {
       setActiveTab('seat');
-    } else if (path === '/mine') {
+    } 
+     else if (path === '/mine') {
       setActiveTab('mine');
     }
     setHoveredTab('');
@@ -504,7 +506,7 @@ function App() {
   
   return (
     <div style={styles.appContainer}>
-      {!['/signin', '/signup', '/form'].includes(location.pathname) && (
+      {!['/', '/signin', '/signup', '/form'].includes(location.pathname) && (
         <>
           <nav style={styles.navbar}>
             <div style={styles.navbarLeft}>
@@ -526,7 +528,7 @@ function App() {
               display: isMobile ? 'none' : 'flex'
             }}>
               <NavLink 
-                to="/" 
+                to="/home" 
                 style={({ isActive }) => ({ ...styles.navItem, ...(isActive ? styles.activeNavItem : {}) })}
                 onMouseEnter={() => setHoveredTab('home')}
                 onMouseLeave={() => setHoveredTab('')}
@@ -777,7 +779,7 @@ function App() {
             display: isMobile ? 'flex' : 'none'
           }}>
             <NavLink 
-              to="/" 
+              to="/home" 
               style={({ isActive }) => ({ 
                 ...styles.mobileNavItem, 
                 ...(isActive ? styles.activeMobileNavItem : {}) 
@@ -843,17 +845,16 @@ function App() {
           </div>
         )}
         
-        <Routes>
-          <Route path="/signin" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/form" element={<PrivateRoute element={<Form />} />} />
-          <Route path="/" element={<PrivateRoute element={<Home />} />} />
-          <Route path="/seat" element={<PrivateRoute element={<Seat />} />} />
-          <Route path="/seat-records" element={<PrivateRoute element={<SeatRecords />} />} />
-          <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
-          <Route path="/lec-class" element={<PrivateRoute element={<LecClass />} requireLecturer={true} />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+      <Routes>
+        <Route path="/signin" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/form" element={<PrivateRoute element={<Form />} />} />
+        <Route path="/home" element={<PrivateRoute element={<Home />} />} />
+        <Route path="/seat" element={<PrivateRoute element={<Seat />} />} />
+        <Route path="/seat-records" element={<PrivateRoute element={<SeatRecords />} />} />
+        <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
+        <Route path="/lec-class" element={<PrivateRoute element={<LecClass />} requireLecturer={true} />} />
+      </Routes>
       </div>
     </div>
   );
