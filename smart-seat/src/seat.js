@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 const Seat = () => {
   const [location, setLocation] = useState('');
@@ -14,6 +14,8 @@ const Seat = () => {
   const [loading, setLoading] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const [userInfo, setUserInfo] = useState({ id: '', name: '' });
+
+  const popularSeats = useMemo(() => new Set([4, 6, 13, 16, 37, 38]), []);
 
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
