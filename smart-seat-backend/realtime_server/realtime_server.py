@@ -2,9 +2,7 @@ from flask import Flask, request, jsonify
 import pandas as pd
 import os
 
-
 app = Flask(__name__)
-
 
 dataset_path = "patterned_booking_data_1.4.csv"
 if os.path.exists(dataset_path):
@@ -14,8 +12,6 @@ else:
         'id', 'bookid', 'room', 'seat_number', 'date', 'weekday',
         'start_time', 'end_time', 'book_name', 'status'
     ])
-
-
 
 # Define the interface to receive new reservation data
 @app.route('/add_booking', methods=['POST'])
@@ -40,3 +36,8 @@ def add_booking():
 
     # Telling the frontend "Receive successful"
     return jsonify({"status": "success", "message": "A new reservation has been saved"})
+
+# Starting the server
+if __name__ == '__main__':
+    print("The real-time data receiving server is started, waiting for a new reservation...")
+    app.run(host='0.0.0.0', port=8000)
