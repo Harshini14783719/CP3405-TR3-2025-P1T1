@@ -625,6 +625,29 @@ const Seat = () => {
   font-size: 1.5rem;
   font-weight: 700;
 }
+.seat { position: relative; } 
+.seat.popular:not(.booked) {
+  background-color: #94a3b8;   
+  border: 2px solid #ef4444;   
+}
+.seat.selected.popular:not(.booked) {
+  box-shadow: 0 0 0 2px #ef4444 inset, 0 0 0 4px rgba(239,68,68,.25);
+}
+.seat.popular:not(.booked)::after {
+  content: 'hot';
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #ef4444;
+  font-weight: 700;
+}
+.seat.booked {
+  background-color: #ef4444;
+  border: none;
+  cursor: not-allowed;
+}
 .form-group {
   margin-bottom: 1.8rem;
 }
