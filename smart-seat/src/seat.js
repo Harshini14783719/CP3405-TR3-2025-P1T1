@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 const Seat = () => {
+  const OPEN_HOUR = 6;     
+  const CLOSE_HOUR = 23;   
+  const MAX_DURATION = 3;  
   const [location, setLocation] = useState('');
   const [libraryFloor, setLibraryFloor] = useState('');
   const [classroomBuilding, setClassroomBuilding] = useState('');
@@ -10,10 +13,12 @@ const Seat = () => {
   const [bookedSeats, setBookedSeats] = useState({});
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedHour, setSelectedHour] = useState('');
+  const [durationHrs, setDurationHrs] = useState(1);
   const [endTime, setEndTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [scrollY, setScrollY] = useState(0);
-  const [userInfo, setUserInfo] = useState({ id: '', name: '' });
+  const [userInfo, setUserInfo] = useState({ id: '', name: '' }); 
+  const popularSeats = useMemo(() => new Set([4, 6, 13, 16, 37, 38]), []);
 
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -110,12 +115,14 @@ const Seat = () => {
 
   useEffect(() => {
     if (selectedHour) {
-      const end = parseInt(selectedHour) + 1;
-      setEndTime(end > 23 ? '00' : end.toString().padStart(2, '0'));
+      const start = parseInt(selectedHour, 10);
+      const end = Math.min(start + durationHrs, CLOSE_HOUR);
+      setEndTime(end.toString().padStart(2, '0'));
     } else {
       setEndTime('');
-    }
-  }, [selectedHour]);
+    } 
+  }, [selectedHour, durationHrs]);
+
 
   useEffect(() => {
     if (selectedDate && selectedHour && getRoomIdentifier()) {
@@ -180,7 +187,7 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -197,8 +204,7 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
-                        onClick={() => toggleSeat(seatNum)}
+                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
@@ -236,7 +242,7 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -253,7 +259,7 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -285,7 +291,7 @@ const Seat = () => {
             {[1, 2, 3].map(seatNum => (
               <div 
                 key={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -298,8 +304,7 @@ const Seat = () => {
             {[4, 5, 6].map(seatNum => (
               <div 
                 key={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
-                onClick={() => toggleSeat(seatNum)}
+                className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
@@ -313,7 +318,7 @@ const Seat = () => {
             {[7, 8, 9].map(seatNum => (
               <div 
                 key={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -326,7 +331,7 @@ const Seat = () => {
             {[10, 11, 12].map(seatNum => (
               <div 
                 key={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -345,7 +350,7 @@ const Seat = () => {
                     {[13 + (tableNum - 1) * 12, 14 + (tableNum - 1) * 12, 15 + (tableNum - 1) * 12].map(seatNum => (
                       <div 
                         key={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -358,7 +363,7 @@ const Seat = () => {
                     {[16 + (tableNum - 1) * 12, 17 + (tableNum - 1) * 12, 18 + (tableNum - 1) * 12].map(seatNum => (
                       <div 
                         key={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -373,7 +378,7 @@ const Seat = () => {
                 {[19 + (tableNum - 1) * 12, 20 + (tableNum - 1) * 12, 21 + (tableNum - 1) * 12].map(seatNum => (
                   <div 
                     key={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                    className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -386,7 +391,7 @@ const Seat = () => {
                 {[22 + (tableNum - 1) * 12, 23 + (tableNum - 1) * 12, 24 + (tableNum - 1) * 12].map(seatNum => (
                   <div 
                     key={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                    className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -407,7 +412,7 @@ const Seat = () => {
                     {[49 + (tableNum - 1) * 12, 50 + (tableNum - 1) * 12, 51 + (tableNum - 1) * 12].map(seatNum => (
                       <div 
                         key={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -420,7 +425,7 @@ const Seat = () => {
                     {[52 + (tableNum - 1) * 12, 53 + (tableNum - 1) * 12, 54 + (tableNum - 1) * 12].map(seatNum => (
                       <div 
                         key={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -435,7 +440,7 @@ const Seat = () => {
                 {[55 + (tableNum - 1) * 12, 56 + (tableNum - 1) * 12, 57 + (tableNum - 1) * 12].map(seatNum => (
                   <div 
                     key={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                    className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -448,7 +453,7 @@ const Seat = () => {
                 {[58 + (tableNum - 1) * 12, 59 + (tableNum - 1) * 12, 60 + (tableNum - 1) * 12].map(seatNum => (
                   <div 
                     key={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                    className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -492,7 +497,7 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
@@ -508,7 +513,7 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''}`}
+                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
@@ -624,6 +629,29 @@ const Seat = () => {
   margin-bottom: 2rem;
   font-size: 1.5rem;
   font-weight: 700;
+}
+.seat { position: relative; } 
+.seat.popular:not(.booked) {
+  background-color: #94a3b8;   
+  border: 2px solid #ef4444;   
+}
+.seat.selected.popular:not(.booked) {
+  box-shadow: 0 0 0 2px #ef4444 inset, 0 0 0 4px rgba(239,68,68,.25);
+}
+.seat.popular:not(.booked)::after {
+  content: 'hot';
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #ef4444;
+  font-weight: 700;
+}
+.seat.booked {
+  background-color: #ef4444;
+  border: none;
+  cursor: not-allowed;
 }
 .form-group {
   margin-bottom: 1.8rem;
@@ -1142,16 +1170,6 @@ const Seat = () => {
             </>
           )}
           <div className="form-group">
-            <label>Date</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="form-control"
-              min={new Date().toISOString().split('T')[0]}
-            />
-          </div>
-          <div className="form-group">
             <label>Start Time (Hour)</label>
             <select
               value={selectedHour}
@@ -1159,21 +1177,36 @@ const Seat = () => {
               className="form-control"
             >
               <option value="">Select hour</option>
-              {[...Array(24).keys()].map(hour => (
-                <option key={hour} value={hour.toString().padStart(2, '0')}>
-                  {hour}:00
-                </option>
-              ))}
+              {Array.from(
+                { length: (CLOSE_HOUR - durationHrs) - OPEN_HOUR + 1 },
+                (_, i) => {
+                  const hour = (OPEN_HOUR + i).toString().padStart(2, '0'); // 06..(23-duration)
+                  return (
+                    <option key={hour} value={hour}>
+                      {hour}:00
+                    </option>
+                  );
+                }
+              )}
+            </select>
+            </div>
+
+          <div className="form-group">
+            <label>Duration (Hours)</label>
+            <select
+              value={durationHrs}
+              onChange={(e) => setDurationHrs(parseInt(e.target.value, 10))}
+              className="form-control"
+            >
+              {[1,2,3].map(h => <option key={h} value={h}>{h}</option>)}
             </select>
           </div>
           {selectedHour && (
             <div className="form-group">
               <label>End Time</label>
-              <div className="end-time-display">
-                {`${endTime}:00`}
-              </div>
-            </div>
-          )}
+              <div className="end-time-display">{`${endTime}:00`}</div>
+            </div>  
+        )}
           <div className="selection-summary sidebar-summary">
             {renderSelectionSummary()}
           </div>
