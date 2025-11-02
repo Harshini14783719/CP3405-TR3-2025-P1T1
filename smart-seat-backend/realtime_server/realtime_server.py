@@ -4,7 +4,7 @@ import os
 
 app = Flask(__name__)
 
-dataset_path = "patterned_booking_data_1.4.csv"
+dataset_path = "structured_booking_data.csv"
 if os.path.exists(dataset_path):
     historical_df = pd.read_csv(dataset_path)
 else:
@@ -17,25 +17,24 @@ else:
 @app.route('/add_booking', methods=['POST'])
 def add_booking():
     global historical_df
-
-    # Receive new reservation data from the front end
     new_booking = request.json
-    print("Received new reservation data：", new_booking)
 
-    # Generate a new id (add 1 to the original data)
-    new_id = len(historical_df) + 1
-    new_booking['id'] = new_id
+    timestamp = new_booking.get("timestamp")
+    seat_id = new_booking.get("seat_id")
+    status = new_booking.get("status")
 
-    # Adding the new data to the historical data
-    new_row = pd.DataFrame([new_booking])
-    historical_df = pd.concat([historical_df, new_row], ignore_index=True)
+    # new data_line
+    new_row = {
+        "timestamp": timestamp,
+        "seat_id": seat_id,
+        "status": status
+    }
 
-    # Save the updated dataset (overwriting the original file)
-    historical_df.to_csv(dataset_path, index=False)
-    print("Data has been updated for total", len(historical_df), " records")
+    # add in history data
+    historical_df = pd.concat([historical_df, pd.DataFrame([new_row])], ignore_index=True)
+    historical_df.to_csv(dataset_path, index=False)  # 保存更新后的数据集
 
-    # Telling the frontend "Receive successful"
-    return jsonify({"status": "success", "message": "A new reservation has been saved"})
+    return jsonify({"status": "success", "message": "实时数据已接收"})
 
 # Starting the server
 if __name__ == '__main__':
