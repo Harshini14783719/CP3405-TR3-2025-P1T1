@@ -8,10 +8,8 @@ dataset_path = "structured_booking_data.csv"
 if os.path.exists(dataset_path):
     historical_df = pd.read_csv(dataset_path)
 else:
-    historical_df = pd.DataFrame(columns=[
-        'id', 'bookid', 'room', 'seat_number', 'date', 'weekday',
-        'start_time', 'end_time', 'book_name', 'status'
-    ])
+    # 初始化时只保留目标格式的列：timestamp、seat_id、status
+    historical_df = pd.DataFrame(columns=["timestamp", "seat_id", "status"])
 
 # Define the interface to receive new reservation data
 @app.route('/add_booking', methods=['POST'])
