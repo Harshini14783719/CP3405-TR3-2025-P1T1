@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
+
 const Seat = () => {
-  const OPEN_HOUR = 6;     
-  const CLOSE_HOUR = 23;   
-  const MAX_DURATION = 3;  
+  const OPEN_HOUR = 6;
+  const CLOSE_HOUR = 23;
+  const MAX_DURATION = 3;
   const [location, setLocation] = useState('');
   const [libraryFloor, setLibraryFloor] = useState('');
   const [classroomBuilding, setClassroomBuilding] = useState('');
@@ -16,9 +17,35 @@ const Seat = () => {
   const [durationHrs, setDurationHrs] = useState(1);
   const [endTime, setEndTime] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showRecommendBtn, setShowRecommendBtn] = useState(false);
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  const [recommendedSeat, setRecommendedSeat] = useState(null);
+  const [selectedMood, setSelectedMood] = useState('');
   const [scrollY, setScrollY] = useState(0);
-  const [userInfo, setUserInfo] = useState({ id: '', name: '' }); 
+  const [userInfo, setUserInfo] = useState({ id: '', name: '' });
+  const [errorMsg, setErrorMsg] = useState('');
   const popularSeats = useMemo(() => new Set([4, 6, 13, 16, 37, 38]), []);
+
+  const moodOptions = [
+    { value: 'Bored', label: 'Bored', icon: '😐' },
+    { value: 'Surprised', label: 'Surprised', icon: '😮' },
+    { value: 'Sad', label: 'Sad', icon: '😢' },
+    { value: 'Happy', label: 'Happy', icon: '😊' },
+    { value: 'Grieving', label: 'Grieving', icon: '😥' },
+    { value: 'Focused', label: 'Focused', icon: '🧠' },
+    { value: 'Tired', label: 'Tired', icon: '😴' },
+    { value: 'Expectant', label: 'Expectant', icon: '🤩' },
+    { value: 'Angry', label: 'Angry', icon: '😠' },
+    { value: 'Nervous', label: 'Nervous', icon: '😰' },
+    { value: 'Relaxed', label: 'Relaxed', icon: '☕' },
+    { value: 'Satisfied', label: 'Satisfied', icon: '😌' },
+    { value: 'Irritated', label: 'Irritated', icon: '😒' },
+    { value: 'Anxious', label: 'Anxious', icon: '😟' },
+    { value: 'Disappointed', label: 'Disappointed', icon: '😞' },
+    { value: 'Calm', label: 'Calm', icon: '😌' },
+    { value: 'Excited', label: 'Excited', icon: '🥳' },
+    { value: 'Pleased', label: 'Pleased', icon: '🙂' },
+  ];
 
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -63,6 +90,8 @@ const Seat = () => {
   useEffect(() => {
     setSelectedSeats([]);
     setBookedSeats({});
+    setRecommendedSeat(null);
+    setErrorMsg('');
   }, [location, classroomBuilding, classroomFloor, classroomRoom, selectedDate, selectedHour]);
 
   const getAvailableFloors = () => {
@@ -108,6 +137,8 @@ const Seat = () => {
       setBookedSeats(booked);
     } catch (error) {
       console.error('Error fetching booked seats:', error);
+      setBookedSeats({});
+      setErrorMsg('fail');
     } finally {
       setLoading(false);
     }
@@ -120,19 +151,22 @@ const Seat = () => {
       setEndTime(end.toString().padStart(2, '0'));
     } else {
       setEndTime('');
-    } 
+    }
   }, [selectedHour, durationHrs]);
-
 
   useEffect(() => {
     if (selectedDate && selectedHour && getRoomIdentifier()) {
       fetchBookedSeats();
+      setShowRecommendBtn(true);
+    } else {
+      setShowRecommendBtn(false);
+      setRecommendedSeat(null);
     }
   }, [selectedDate, selectedHour, getRoomIdentifier, fetchBookedSeats]);
 
   const toggleSeat = (seatNumber) => {
     if (bookedSeats[seatNumber]) return;
-    setSelectedSeats(prev => 
+    setSelectedSeats(prev =>
       prev.includes(seatNumber)
         ? prev.filter(num => num !== seatNumber)
         : [...prev, seatNumber]
@@ -166,6 +200,47 @@ const Seat = () => {
     }
   };
 
+  const handleGetRecommendation = async () => {
+    if (!selectedMood || !getRoomIdentifier() || !selectedHour || !selectedDate) {
+      setErrorMsg('fill first');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const room = getRoomIdentifier();
+      const time_slot = `${selectedHour}:00`;
+      const booked_seats = Object.keys(bookedSeats).join(',');
+      
+      const response = await axios.post('/api/recommend/seat', {
+        room_id: room,
+        time_slot: time_slot,
+        booked_seats: booked_seats,
+        user_mood: selectedMood
+      });
+      
+      if (response.data.seat_number) {
+        setRecommendedSeat(response.data.seat_number);
+        setShowMoodModal(false);
+        if (window.innerWidth < 768) {
+          document.querySelector(`.seat[data-seat="${response.data.seat_number}"]`)?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+        }
+      } else {
+        setErrorMsg('fail');
+      }
+    } catch (error) {
+      console.error('Error getting recommendation:', error);
+      const errMsg = error.response?.data?.msg || 'fail';
+      setErrorMsg(errMsg);
+      alert(`fail: ${errMsg}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderCanteenSeats = () => {
     const isMobile = window.innerWidth < 768;
     const columns = isMobile ? 3 : 3;
@@ -187,7 +262,8 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -204,7 +280,9 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
@@ -242,7 +320,8 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -259,7 +338,8 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -291,7 +371,8 @@ const Seat = () => {
             {[1, 2, 3].map(seatNum => (
               <div 
                 key={seatNum}
-                className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                data-seat={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -304,7 +385,9 @@ const Seat = () => {
             {[4, 5, 6].map(seatNum => (
               <div 
                 key={seatNum}
-                className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                data-seat={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
@@ -318,7 +401,8 @@ const Seat = () => {
             {[7, 8, 9].map(seatNum => (
               <div 
                 key={seatNum}
-                className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                data-seat={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -331,7 +415,8 @@ const Seat = () => {
             {[10, 11, 12].map(seatNum => (
               <div 
                 key={seatNum}
-                className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                data-seat={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -350,7 +435,8 @@ const Seat = () => {
                     {[13 + (tableNum - 1) * 12, 14 + (tableNum - 1) * 12, 15 + (tableNum - 1) * 12].map(seatNum => (
                       <div 
                         key={seatNum}
-                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -363,7 +449,8 @@ const Seat = () => {
                     {[16 + (tableNum - 1) * 12, 17 + (tableNum - 1) * 12, 18 + (tableNum - 1) * 12].map(seatNum => (
                       <div 
                         key={seatNum}
-                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -378,7 +465,8 @@ const Seat = () => {
                 {[19 + (tableNum - 1) * 12, 20 + (tableNum - 1) * 12, 21 + (tableNum - 1) * 12].map(seatNum => (
                   <div 
                     key={seatNum}
-                    className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                    data-seat={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -391,7 +479,8 @@ const Seat = () => {
                 {[22 + (tableNum - 1) * 12, 23 + (tableNum - 1) * 12, 24 + (tableNum - 1) * 12].map(seatNum => (
                   <div 
                     key={seatNum}
-                    className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                    data-seat={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -412,7 +501,8 @@ const Seat = () => {
                     {[49 + (tableNum - 1) * 12, 50 + (tableNum - 1) * 12, 51 + (tableNum - 1) * 12].map(seatNum => (
                       <div 
                         key={seatNum}
-                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -425,7 +515,8 @@ const Seat = () => {
                     {[52 + (tableNum - 1) * 12, 53 + (tableNum - 1) * 12, 54 + (tableNum - 1) * 12].map(seatNum => (
                       <div 
                         key={seatNum}
-                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -440,7 +531,8 @@ const Seat = () => {
                 {[55 + (tableNum - 1) * 12, 56 + (tableNum - 1) * 12, 57 + (tableNum - 1) * 12].map(seatNum => (
                   <div 
                     key={seatNum}
-                    className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                    data-seat={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -453,7 +545,8 @@ const Seat = () => {
                 {[58 + (tableNum - 1) * 12, 59 + (tableNum - 1) * 12, 60 + (tableNum - 1) * 12].map(seatNum => (
                   <div 
                     key={seatNum}
-                    className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                    data-seat={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -497,7 +590,8 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
@@ -513,7 +607,8 @@ const Seat = () => {
                     return (
                       <div 
                         key={seatNum}
-                        className={`seat ${bookedSeats[seatNum] ? 'booked' : popularSeats.has(seatNum) ? 'popular' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''}`}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
@@ -532,7 +627,8 @@ const Seat = () => {
   };
 
   const renderSeatMap = () => {
-    if (loading) return <div>Loading seat map...</div>;
+    if (loading) return <div style={{ textAlign: 'center', padding: '50px' }}>Loading seat map...</div>;
+    if (errorMsg) return <div style={{ textAlign: 'center', padding: '50px', color: 'red' }}>{errorMsg}</div>;
     if (location === 'canteen' && selectedDate && selectedHour) {
       return renderCanteenSeats();
     } else if (location === 'library' && libraryFloor && selectedDate && selectedHour) {
@@ -545,7 +641,7 @@ const Seat = () => {
         return renderClassroomType1();
       }
     }
-    return null;
+    return <div style={{ textAlign: 'center', padding: '50px', color: '#666' }}>Please complete the location, date, and time selection</div>;
   };
 
   const renderSelectionSummary = () => (
@@ -571,6 +667,13 @@ const Seat = () => {
           {selectedSeats.map(seat => (
             <p key={seat}>{seat}</p>
           ))}
+        </div>
+      )}
+      {recommendedSeat && (
+        <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#dcfce7', borderRadius: '6px' }}>
+          <p style={{ margin: 0, color: '#166534' }}>
+            Recommended Seats: <strong>{recommendedSeat}</strong> <span style={{ fontSize: '12px' }}>(Highlighted)</span>
+          </p>
         </div>
       )}
       <button
@@ -611,6 +714,7 @@ const Seat = () => {
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   z-index: 101;
+  transition: all 0.3s ease;
 }
 .seat-sidebar {
   width: 28%;
@@ -630,28 +734,38 @@ const Seat = () => {
   font-size: 1.5rem;
   font-weight: 700;
 }
-.seat { position: relative; } 
-.seat.popular:not(.booked) {
-  background-color: #94a3b8;   
-  border: 2px solid #ef4444;   
+.seat {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0 8px;
+  position: relative;
 }
-.seat.selected.popular:not(.booked) {
-  box-shadow: 0 0 0 2px #ef4444 inset, 0 0 0 4px rgba(239,68,68,.25);
-}
-.seat.popular:not(.booked)::after {
-  content: 'hot';
-  position: absolute;
-  top: -16px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 10px;
-  color: #ef4444;
-  font-weight: 700;
+.seat.selected {
+  background-color: #1e40af;
 }
 .seat.booked {
   background-color: #ef4444;
-  border: none;
   cursor: not-allowed;
+}
+.seat.recommended {
+  border: 3px solid #10b981;
+  animation: pulse 2s infinite;
+  background-color: #dcfce7;
+  color: #166534;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 .form-group {
   margin-bottom: 1.8rem;
@@ -708,6 +822,24 @@ const Seat = () => {
 .booking-button:disabled {
   background-color: #94a3b8;
   cursor: not-allowed;
+}
+.recommend-button {
+  background-color: #0ea5e9;
+  color: white;
+  border: none;
+  padding: 0.85rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  margin-top: 1rem;
+}
+.recommend-button:hover {
+  background-color: #0284c7;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 .selection-summary {
   margin-top: 2.5rem;
@@ -779,6 +911,7 @@ const Seat = () => {
   background-color: #e2e8f0;
   margin: 30px auto;
   position: relative;
+  border-radius: 4px;
 }
 .horizontal-table {
   width: 180px;
@@ -788,26 +921,9 @@ const Seat = () => {
   width: 60px;
   height: 180px;
 }
-.seat {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: #94a3b8;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin: 0 8px;
-}
-.seat.selected {
-  background-color: #1e40af;
-}
-.seat.booked {
-  background-color: #ef4444;
-  cursor: not-allowed;
+.seat:hover:not(.booked) {
+  transform: scale(1.1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 .table-seats {
   display: flex;
@@ -961,6 +1077,107 @@ const Seat = () => {
   display: none;
 }
 
+/* Mood Modal Styles */
+.mood-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+.mood-modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+.mood-modal {
+  background-color: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  padding: 2rem;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.mood-modal-overlay.active .mood-modal {
+  transform: translateY(0);
+}
+.mood-modal h3 {
+  color: #0f172a;
+  margin-bottom: 1.5rem;
+  font-size: 1.4rem;
+  text-align: center;
+  font-weight: 700;
+}
+.mood-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.mood-option {
+  background-color: #f1f5f9;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.mood-option:hover {
+  background-color: #e2e8f0;
+  transform: translateY(-3px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+.mood-option.selected {
+  border-color: #1e40af;
+  background-color: #eff6ff;
+  box-shadow: 0 4px 6px -1px rgba(30, 64, 175, 0.1);
+}
+.mood-option .icon {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+.mood-option .label {
+  font-weight: 500;
+  color: #334155;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+.modal-button {
+  padding: 0.7rem 1.2rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.modal-button.cancel {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border: none;
+}
+.modal-button.confirm {
+  background-color: #1e40af;
+  color: white;
+  border: none;
+}
+.modal-button:hover {
+  transform: translateY(-2px);
+}
+
 @media (max-width: 768px) {
   .seat-container {
     flex-direction: column;
@@ -1055,7 +1272,7 @@ const Seat = () => {
     top: 60px;
   }
   
-  .booking-button {
+  .booking-button, .recommend-button {
     padding: 1rem;
     font-size: 1.1rem;
   }
@@ -1072,6 +1289,10 @@ const Seat = () => {
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
+  
+  .mood-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
         `}
       </style>
@@ -1085,8 +1306,8 @@ const Seat = () => {
           <h2>Select Location</h2>
           <div className="form-group">
             <label>Location</label>
-            <select 
-              value={location} 
+            <select
+              value={location}
               onChange={(e) => setLocation(e.target.value)}
               className="form-control"
             >
@@ -1099,14 +1320,15 @@ const Seat = () => {
           {location === 'library' && (
             <div className="form-group">
               <label>Library Floor</label>
-              <select 
-                value={libraryFloor} 
+              <select
+                value={libraryFloor}
                 onChange={(e) => setLibraryFloor(e.target.value)}
                 className="form-control"
               >
-                <option value="">Select a floor</option>
+                <option value="">Select floor</option>
                 <option value="1">Floor 1</option>
                 <option value="2">Floor 2</option>
+                <option value="3">Floor 3</option>
               </select>
             </div>
           )}
@@ -1114,177 +1336,162 @@ const Seat = () => {
             <>
               <div className="form-group">
                 <label>Building</label>
-                <select 
-                  value={classroomBuilding} 
+                <select
+                  value={classroomBuilding}
                   onChange={(e) => setClassroomBuilding(e.target.value)}
                   className="form-control"
                 >
-                  <option value="">Select a building</option>
+                  <option value="">Select building</option>
                   <option value="A">Building A</option>
                   <option value="B">Building B</option>
                   <option value="C">Building C</option>
                   <option value="E">Building E</option>
                 </select>
               </div>
-              {classroomBuilding !== 'E' && (
-                <div className="form-group">
-                  <label>Floor</label>
-                  <select 
-                    value={classroomFloor} 
-                    onChange={(e) => setClassroomFloor(e.target.value)}
-                    className="form-control"
-                    disabled={!classroomBuilding}
-                  >
-                    <option value="">Select a floor</option>
-                    {getAvailableFloors().map(floor => (
-                      <option key={floor} value={floor}>Floor {floor}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {classroomBuilding === 'E' && (
-                <div className="form-group">
-                  <label>Floor</label>
-                  <input 
-                    type="text" 
-                    value="2" 
-                    readOnly 
-                    className="form-control"
-                  />
-                </div>
-              )}
+              <div className="form-group">
+                <label>Floor</label>
+                <select
+                  value={classroomFloor}
+                  onChange={(e) => setClassroomFloor(e.target.value)}
+                  className="form-control"
+                  disabled={!classroomBuilding}
+                >
+                  <option value="">Select floor</option>
+                  {getAvailableFloors().map(floor => (
+                    <option key={floor} value={floor.toString()}>
+                      Floor {floor}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="form-group">
                 <label>Room</label>
-                <select 
-                  value={classroomRoom} 
+                <select
+                  value={classroomRoom}
                   onChange={(e) => setClassroomRoom(e.target.value)}
                   className="form-control"
-                  disabled={!classroomBuilding || (classroomBuilding !== 'E' && !classroomFloor)}
+                  disabled={!classroomFloor}
                 >
-                  <option value="">Select a room</option>
+                  <option value="">Select room</option>
                   {generateClassroomRooms().map(room => (
-                    <option key={room} value={room}>{room}</option>
+                    <option key={room} value={room}>
+                      {room}
+                    </option>
                   ))}
                 </select>
               </div>
             </>
           )}
           <div className="form-group">
-            <label>Start Time (Hour)</label>
+            <label>Date</label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="form-control"
+              min={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+          <div className="form-group">
+            <label>Start Time</label>
             <select
               value={selectedHour}
               onChange={(e) => setSelectedHour(e.target.value)}
               className="form-control"
+              disabled={!selectedDate}
             >
               <option value="">Select hour</option>
-              {Array.from(
-                { length: (CLOSE_HOUR - durationHrs) - OPEN_HOUR + 1 },
-                (_, i) => {
-                  const hour = (OPEN_HOUR + i).toString().padStart(2, '0'); // 06..(23-duration)
-                  return (
-                    <option key={hour} value={hour}>
-                      {hour}:00
-                    </option>
-                  );
-                }
-              )}
+              {[...Array(CLOSE_HOUR - OPEN_HOUR).keys()].map(hour => {
+                const hourStr = (OPEN_HOUR + hour).toString().padStart(2, '0');
+                return (
+                  <option key={hourStr} value={hourStr}>
+                    {hourStr}:00
+                  </option>
+                );
+              })}
             </select>
-            </div>
-
+          </div>
           <div className="form-group">
-            <label>Duration (Hours)</label>
-            <select
+            <label>Duration (hours)</label>
+            <input
+              type="range"
+              min="1"
+              max={MAX_DURATION}
               value={durationHrs}
               onChange={(e) => setDurationHrs(parseInt(e.target.value, 10))}
               className="form-control"
-            >
-              {[1,2,3].map(h => <option key={h} value={h}>{h}</option>)}
-            </select>
+              disabled={!selectedHour}
+            />
+            <div className="end-time-display">
+              Duration: {durationHrs} hour(s) (Ends at {endTime}:00)
+            </div>
           </div>
-          {selectedHour && (
-            <div className="form-group">
-              <label>End Time</label>
-              <div className="end-time-display">{`${endTime}:00`}</div>
-            </div>  
-        )}
-          <div className="selection-summary sidebar-summary">
+          
+          {errorMsg && (
+            <div style={{ margin: '1rem 0', padding: '0.8rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '6px', fontSize: '0.9rem' }}>
+              {errorMsg}
+            </div>
+          )}
+          
+          <button
+            className="recommend-button"
+            onClick={() => setShowMoodModal(true)}
+            disabled={!showRecommendBtn || loading}
+          >
+            Get Seat Recommendation
+          </button>
+          
+          <div className={`mood-modal-overlay ${showMoodModal ? 'active' : ''}`}>
+            <div className="mood-modal">
+              <h3>How are you feeling today?</h3>
+              <div className="mood-options">
+                {moodOptions.map(mood => (
+                  <div
+                    key={mood.value}
+                    className={`mood-option ${selectedMood === mood.value ? 'selected' : ''}`}
+                    onClick={() => setSelectedMood(mood.value)}
+                  >
+                    <div className="icon">{mood.icon}</div>
+                    <div className="label">{mood.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="modal-actions">
+                <button 
+                  className="modal-button cancel"
+                  onClick={() => setShowMoodModal(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="modal-button confirm"
+                  onClick={handleGetRecommendation}
+                  disabled={!selectedMood || loading}
+                >
+                  Get Recommendation
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="sidebar-summary">
             {renderSelectionSummary()}
           </div>
         </div>
         <div className="seat-main">
           <div className="seat-content">
-            <h1>Seat Reservation</h1>
-            {!location ? (
-              <div className="empty-state">
-                <p>Please select a location from the sidebar to view available seats</p>
-              </div>
-            ) : location === 'canteen' ? (
-              !selectedDate || !selectedHour ? (
-                <div className="empty-state">
-                  <p>Please select date and time to view canteen seating</p>
-                </div>
-              ) : (
-                <div className="location-view">
-                  <h2>Canteen Seating</h2>
-                  <div className="seat-map-container">
-                    <div className="seat-map">
-                      {renderSeatMap()}
-                    </div>
-                  </div>
-                  <div className="mobile-summary">
-                    {renderSelectionSummary()}
-                  </div>
-                </div>
-              )
-            ) : location === 'library' && !libraryFloor ? (
-              <div className="empty-state">
-                <p>Please select a floor to view library seating</p>
-              </div>
-            ) : location === 'library' ? (
-              !selectedDate || !selectedHour ? (
-                <div className="empty-state">
-                  <p>Please select date and time to view library seating</p>
-                </div>
-              ) : (
-                <div className="location-view">
-                  <h2>Library - Floor {libraryFloor}</h2>
-                  <div className="seat-map-container">
-                    <div className="seat-map">
-                      {renderSeatMap()}
-                    </div>
-                  </div>
-                  <div className="mobile-summary">
-                    {renderSelectionSummary()}
-                  </div>
-                </div>
-              )
-            ) : location === 'classroom' && (!classroomBuilding || (classroomBuilding !== 'E' && !classroomFloor) || !classroomRoom) ? (
-              <div className="empty-state">
-                <p>Please complete the classroom selection to view seating</p>
-              </div>
-            ) : (
-              !selectedDate || !selectedHour ? (
-                <div className="empty-state">
-                  <p>Please select date and time to view classroom seating</p>
-                </div>
-              ) : (
-                <div className="location-view">
-                  <h2>Classroom {classroomRoom}</h2>
-                  <div className="seat-map-container">
-                    <div className="seat-map">
-                      {renderSeatMap()}
-                    </div>
-                  </div>
-                  <div className="mobile-summary">
-                    {renderSelectionSummary()}
-                  </div>
-                </div>
-              )
-            )}
+            <h1>Seat Map</h1>
+            <div className="seat-map-container">
+              {renderSeatMap()}
+            </div>
+            <div className="mobile-summary">
+              {renderSelectionSummary()}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
 export default Seat;

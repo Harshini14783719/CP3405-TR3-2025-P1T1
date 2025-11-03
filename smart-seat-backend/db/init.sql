@@ -1,14 +1,38 @@
 CREATE DATABASE IF NOT EXISTS smart_seat;
 USE smart_seat;
 
-CREATE TABLE IF NOT EXISTS users (
+DROP TABLE IF EXISTS users;
+CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(255) NOT NULL UNIQUE,
+  email VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
-  role ENUM('student', 'teacher', 'admin') NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  role VARCHAR(50) NOT NULL DEFAULT 'student',
+  name VARCHAR(255) NULL,
+  jcu_id VARCHAR(8) NULL UNIQUE,
+  gender VARCHAR(10) NULL,
+  birthday DATE NULL,
+  major VARCHAR(255) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT IGNORE INTO users (email, password, role) 
-VALUES ('test@example.com', '$2b$10$VKYJ8L6jZ9lL8H5QK8Qj8eGf9Gf9Gf9Gf9Gf9Gf9Gf9Gf9Gf9Gf', 'student');
+DROP TABLE IF EXISTS bookings;
+CREATE TABLE bookings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  room VARCHAR(50) NOT NULL,
+  seat_number INT NOT NULL,
+  date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  book_name VARCHAR(100) NOT NULL,
+  book_id INT NOT NULL,
+  status TINYINT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_booking (room, seat_number, date, start_time),
+  CONSTRAINT fk_booking_user FOREIGN KEY (book_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+INSERT INTO users (email, password, role, name, jcu_id, gender, birthday, major)
+VALUES ('test@jcu.edu.au', '$2a$10$EixZaYb051a2U6k8G9Kz2e8G9H0i1J2K3L4M5N6O7P8Q9R0S1T2U', 'student', 'Test User', '12345678', 'male', '2000-01-01', 'Computer Science');
+
+INSERT INTO bookings (room, seat_number, date, start_time, end_time, book_name, book_id, status)
+VALUES ('library-1', 5, CURDATE(), '14:00:00', '16:00:00', 'Test User', 1, 0);
