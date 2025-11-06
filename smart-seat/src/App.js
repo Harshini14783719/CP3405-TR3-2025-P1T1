@@ -9,7 +9,7 @@ import Seat from './seat';
 import SeatRecords from './seat-records';
 import Mine from './mine';
 import LecClass from './lec-class';
-import { /* ... */ Navigate } from "react-router-dom";
+
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
