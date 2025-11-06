@@ -9,6 +9,7 @@ import Seat from './seat';
 import SeatRecords from './seat-records';
 import Mine from './mine';
 import LecClass from './lec-class';
+import { /* ... */ Navigate } from "react-router-dom";
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -846,6 +847,7 @@ function App() {
         )}
         
       <Routes>
+        <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/form" element={<PrivateRoute element={<Form />} />} />
@@ -854,7 +856,9 @@ function App() {
         <Route path="/seat-records" element={<PrivateRoute element={<SeatRecords />} />} />
         <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
         <Route path="/lec-class" element={<PrivateRoute element={<LecClass />} requireLecturer={true} />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
+      
       </div>
     </div>
   );
