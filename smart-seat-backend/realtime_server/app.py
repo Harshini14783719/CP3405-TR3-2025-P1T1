@@ -37,8 +37,15 @@ total_seats = {
     'small': model_data['small']['total_seats']
 }
 
-
-
+# Image access interface
+@app.route('/get_plot/<room_type>')
+def get_plot(room_type):
+    if room_type not in ['large', 'small']:
+        return "Invalid room type", 400
+    filename = f"{room_type}_forecast_plot.png"
+    if not os.path.exists(os.path.join(IMAGE_FOLDER, filename)):
+        return "Plot not found. Please run arima_model.py first.", 404
+    return send_from_directory(IMAGE_FOLDER, filename)
 
 
 # Define the interface to receive new reservation data
