@@ -309,6 +309,11 @@ const Seat = () => {
     
     return (
       <div className="library-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
+        {/* Door and windows */}
+        <div className="door" style={{ bottom: '10px', left: '50%', transform: 'translateX(-50%)' }}>🚪 Door</div>
+        <div className="window" style={{ top: '10px', left: '30%' }}>🪟 Window</div>
+        <div className="window" style={{ top: '10px', right: '30%' }}>🪟 Window</div>
+
         {[...Array(columns)].map((_, colIndex) => (
           <div key={`col-${colIndex + 1}`} className="library-column">
             {[...Array(tablesPerColumn)].map((_, tableIndex) => (
@@ -366,6 +371,11 @@ const Seat = () => {
     
     return (
       <div className={`classroom-type1 ${is01To07 ? 'classroom-01-07' : ''}`} style={{ width: isMobile ? 'auto' : (is01To07 ? 1200 : 1000), minWidth: isMobile ? '600px' : 'auto' }}>
+        {/* Door and windows */}
+        <div className="door" style={{ top: '10px', left: '50%', transform: 'translateX(-50%)' }}>🚪 Door</div>
+        <div className="window" style={{ top: '50%', left: '20px' }}>🪟 Window</div>
+        <div className="window" style={{ top: '50%', right: '20px' }}>🪟 Window</div>
+        
         <div className="left-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
           <div className="table-seats top-seats">
             {[1, 2, 3].map(seatNum => (
@@ -1176,6 +1186,27 @@ const Seat = () => {
 }
 .modal-button:hover {
   transform: translateY(-2px);
+}
+
+.door, .window {
+  position: absolute;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #0f172a;
+  background-color: #f1f5f9;
+  border-radius: 6px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.door {
+  background-color: #fef3c7;
+  border: 2px solid #f59e0b;
+}
+
+.window {
+  background-color: #e0f2fe;
+  border: 2px solid #0ea5e9;
 }
 
 @media (max-width: 768px) {
