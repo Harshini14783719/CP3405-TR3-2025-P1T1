@@ -24,6 +24,7 @@ const Seat = () => {
   const [scrollY, setScrollY] = useState(0);
   const [userInfo, setUserInfo] = useState({ id: '', name: '' });
   const [errorMsg, setErrorMsg] = useState('');
+  const [predictionData, setPredictionData] = useState(null);
   const popularSeats = useMemo(() => new Set([4, 6, 13, 16, 37, 38]), []);
 
   const moodOptions = [
@@ -163,6 +164,24 @@ const Seat = () => {
       setRecommendedSeat(null);
     }
   }, [selectedDate, selectedHour, getRoomIdentifier, fetchBookedSeats]);
+
+  // Fetch prediction data from ARIMA model when seating chart loads
+useEffect(() => {
+  const fetchPrediction = async () => {
+    try {
+      const res = await axios.get('/api/arimamodel');
+      setPredictionData(res.data);
+    } catch (err) {
+      console.error('Error fetching ARIMA model data:', err);
+      setPredictionData({ error: 'Failed to load prediction data' });
+    }
+  };
+
+  // Only load predictions when a location and time are selected
+  if (selectedDate && selectedHour && getRoomIdentifier()) {
+    fetchPrediction();
+  }
+}, [selectedDate, selectedHour, getRoomIdentifier]);
 
   const toggleSeat = (seatNumber) => {
     if (bookedSeats[seatNumber]) return;
@@ -1511,6 +1530,18 @@ const Seat = () => {
             <div className="seat-map-container">
               {renderSeatMap()}
             </div>
+            {predictionData && (
+              <div style={{ marginTop: '20px', padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '6px' }}>
+                <h3 style={{ color: '#1e40af' }}>Predicted Usage Data</h3>
+                {predictionData.error ? (
+                  <p style={{ color: 'red' }}>{predictionData.error}</p>
+                ) : (
+                  <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', color: '#334155' }}>
+                    {JSON.stringify(predictionData, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
             <div className="mobile-summary">
               {renderSelectionSummary()}
             </div>
