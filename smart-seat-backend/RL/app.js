@@ -1,5 +1,5 @@
 const express = require('express');
-const { getUserBookingState } = require('./db/query');
+const { getUserBookingState } = require('./RL/query');
 const app = express();
 const port = 3000;
 
