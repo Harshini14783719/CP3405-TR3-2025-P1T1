@@ -32,5 +32,27 @@ class SeatBookingEnv(gym.Env):
         # Classify urgency levels
         return 3 if urgency >= 6 else 2 if urgency >= 3 else 1
 
+    def _calculate_reward(self, action):
+        urgency = self._calculate_urgency()
+        reward = 0
+        # action 0：recommended seats
+        if action == 0:
+            reward = 10 if urgency >= 2 else 2
+        # action 1：recommended during off-peak hours
+        elif action == 1:
+            reward = 10 if urgency <= 1 else 2
+        # action 2：limit the reservation time
+        elif action == 2:
+            reward = 10 if urgency == 1 else 2
+        return reward
+
+    def step(self, action):
+        reward = self._calculate_reward(action)
+        done = True
+        return self.state, reward, done, {}
+
+    def reset(self):
+        self.state = np.array([0, 0, 0, 0, 0])
+        return self.state
 
 
