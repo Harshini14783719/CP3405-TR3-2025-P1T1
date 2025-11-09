@@ -28,8 +28,8 @@ def load_and_process_data(csv_path="patterned_booking_data_with_bookid.csv"):
         'seat_number'].sum().reset_index()
     grouped = grouped.sort_values(by=['class_type', 'weekday', 'hour_slot', 'date'])
 
-    print(f"聚合后的数据量：{len(grouped)} 条")
-    print("前5条聚合数据：")
+    print(f"The volume of aggregated data：{len(grouped)} ")
+    print("The first five aggregated data points：")
     print(grouped.head())
 
     return grouped
