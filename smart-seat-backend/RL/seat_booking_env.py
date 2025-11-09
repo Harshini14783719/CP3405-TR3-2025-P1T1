@@ -1,0 +1,36 @@
+import numpy as np
+import gym
+import requests
+from gym import spaces
+
+class SeatBookingEnv(gym.Env):
+    def __init__(self):
+        super(SeatBookingEnv, self).__init__()
+        self.action_space = spaces.Discrete(3) # 3 actions
+        self.observation_space = spaces.Box(
+        #booking_times, book_name, role, room_type, hour
+        #0-5, exam_review=0, study=1, group_discussion=2, teacher=0, student=1, small room=0, large room=1)
+            low=np.array([0, 0, 0, 0, 0]),
+            high=np.array([5, 2, 1, 1, 23]),
+            dtype=np.int32
+        )
+        self.state = None
+
+    def set_user_state(self, userId):
+        """Call the interface to obtain user status data"""
+
+    def _calculate_urgency(self):
+        # priority：book_name(exam_review>study>Group discussion) > role(teacher>student) > booking_times(less is urgent)
+        booking_history, book_name_code, role_code, _, _ = self.state
+        urgency = 0
+        # Booking purpose weight
+        urgency += 3 if book_name_code == 0 else 2 if book_name_code == 1 else 1
+        # Role weight
+        urgency += 2 if role_code == 0 else 0
+        # Booking frequency weight
+        urgency += 2 if booking_history <= 1 else 1 if booking_history <= 3 else 0
+        # Classify urgency levels
+        return 3 if urgency >= 6 else 2 if urgency >= 3 else 1
+
+
+
