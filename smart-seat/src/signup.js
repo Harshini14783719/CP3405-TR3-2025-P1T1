@@ -25,7 +25,7 @@ const SignUp = () => {
     const { identity, email, password, confirmPassword, agreePolicy } = formData;
     
     if (!identity) {
-      alert('Please select your identity (Student/Lecturer)!');
+      alert('Please select your identity (Student/Lecturer/Admin)!');
       return;
     }
     if (!email || !password || !confirmPassword) {
@@ -55,7 +55,16 @@ const SignUp = () => {
       const data = await response.json();
       if (data.success) {
         localStorage.setItem('savedEmail', email);
-        navigate(`/form?role=${identity}`, { replace: true });
+        localStorage.setItem('role', identity);
+
+        // role-aware redirects after successful registration
+        if (identity === 'admin') {
+          navigate('/admin-dashboard', { replace: true });
+        } else if (identity === 'lecturer') {
+          navigate('/tutor?mode=readonly', { replace: true });
+        } else {
+          navigate(`/form?role=${identity}`, { replace: true });
+        }
       } else {
         alert(data.message);
       }
@@ -372,6 +381,19 @@ const SignUp = () => {
                 style={styles.identityRadio}
               />
               Lecturer
+            </label>
+            <label 
+              style={formData.identity === 'admin' ? { ...styles.identityLabel, ...styles.identityLabelChecked } : styles.identityLabel}
+            >
+              <input
+                type="radio"
+                name="identity"
+                value="admin"
+                checked={formData.identity === 'admin'}
+                onChange={handleChange}
+                style={styles.identityRadio}
+              />
+              Admin
             </label>
           </div>
         </div>
