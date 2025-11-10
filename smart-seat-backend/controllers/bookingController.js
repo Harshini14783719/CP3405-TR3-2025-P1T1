@@ -1,4 +1,6 @@
 const pool = require('../db/pool');
+// 在文件的顶部，和其他 require 语句放在一起
+const QRCode = require('qrcode');
 
 exports.getAllBookings = async (req, res) => {
   let connection;
@@ -203,6 +205,103 @@ exports.updateExpiredBookings = async (req, res) => {
   } catch (error) {
     console.error('Error updating expired bookings:', error);
     res.status(500).json({ message: 'Server error' });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+/**
+ * @description 生成二维码并存储到数据库
+ * @route POST /api/bookings/generate-qrcode
+ */
+exports.generateQrCode = async (req, res) => {
+  let connection;
+  try {
+    const { bookingId } = req.body;
+
+    if (!bookingId) {
+      return res.status(400).json({ message: 'Booking ID is required' });
+    }
+
+    // !!重要: 如果你在本地测试, 请使用 http://localhost:端口号
+    // 如果部署到服务器, 请替换为您的后端服务器域名或IP地址
+    const serverUrl = 'http://10.175.182.243:5000'; // 假设你的服务器运行在3000端口
+    const verifyUrl = `${serverUrl}/api/bookings/verify-booking/${bookingId}`;
+
+    const qrCodeDataUrl = await QRCode.toDataURL(verifyUrl);
+
+    connection = await pool.getConnection();
+
+    const [result] = await connection.execute(
+      'UPDATE bookings SET qrcode = ? WHERE id = ?',
+      [qrCodeDataUrl, bookingId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Booking not found with the provided ID' });
+    }
+
+    res.status(200).json({
+      message: 'QR code generated and saved successfully',
+      qrcode: qrCodeDataUrl,
+    });
+
+  } catch (error) {
+    console.error('Error generating QR code:', error);
+    res.status(500).json({ message: 'Server error while generating QR code' });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+
+/**
+ * @description 验证二维码并办理入住
+ * @route GET /api/bookings/verify-booking/:bookingId
+ */
+exports.verifyBooking = async (req, res) => {
+  let connection;
+  try {
+    const { bookingId } = req.params;
+    connection = await pool.getConnection();
+
+    const [bookings] = await connection.execute(
+      'SELECT date, start_time, if_checkin FROM bookings WHERE id = ?',
+      [bookingId]
+    );
+
+    if (bookings.length === 0) {
+      return res.status(404).send('<h1>Booking Not Found</h1><p>The booking ID is invalid.</p>');
+    }
+
+    const booking = bookings[0];
+
+    if (booking.if_checkin) {
+      return res.status(200).send('<h1>Already Checked In</h1><p>This booking has already been checked in.</p>');
+    }
+
+    const bookingDateStr = booking.date.toISOString().split('T')[0];
+    const bookingStartTimeStr = booking.start_time;
+
+    const bookingTime = new Date(`${bookingDateStr}T${bookingStartTimeStr}`);
+    const currentTime = new Date();
+
+    const timeDifference = Math.abs(currentTime - bookingTime);
+    const fifteenMinutesInMillis = 15 * 60 * 1000;
+
+    if (timeDifference <= fifteenMinutesInMillis) {
+      await connection.execute(
+        'UPDATE bookings SET if_checkin = 1 WHERE id = ?',
+        [bookingId]
+      );
+      res.status(200).send('<h1>Check-in Successful!</h1><p>Your check-in has been confirmed.</p>');
+    } else {
+      res.status(403).send('<h1>Check-in Failed</h1><p>Check-in is only allowed within 15 minutes of the booking start time.</p>');
+    }
+
+  } catch (error) {
+    console.error('Error verifying booking:', error);
+    res.status(500).send('<h1>Server Error</h1><p>An error occurred while processing your request.</p>');
   } finally {
     if (connection) connection.release();
   }
