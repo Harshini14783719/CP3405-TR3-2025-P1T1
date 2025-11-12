@@ -2,7 +2,8 @@ import os
 from fastapi import Query
 from fastapi import FastAPI
 from stable_baselines3 import PPO
-from .seat_booking_env import SeatBookingEnv
+from seat_booking_env import SeatBookingEnv
+
 
 
 current_dir = os.path.dirname(os.path.abspath(__file__))

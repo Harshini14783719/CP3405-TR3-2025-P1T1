@@ -1,7 +1,8 @@
 const express = require('express');
-const { getUserBookingState } = require('./RL/query');
+const axios = require('axios'); // ✅ 必须加
+const { getUserBookingState } = require('./query');
 const app = express();
-const port = 3000;
+const port = 4000;
 
 // interface 1：provide user status data to the RL environment
 app.get('/api/rl-state', async (req, res) => {
@@ -17,7 +18,12 @@ app.get('/api/rl-decision', async (req, res) => {
     const response = await axios.get(`http://localhost:8000/decision?user_id=${userId}`);
     res.json(response.data);
   } catch (error) {
-    res.status(500).json({ error: 'The decision to obtain RL failed' });
+    console.error("❌ RL decision error:", error.message);
+    if (error.response) {
+      console.error("Response data:", error.response.data);
+      console.error("Response status:", error.response.status);
+    }
+    res.status(500).json({ error: 'The decision to obtain RL failed', detail: error.message });
   }
 });
 
