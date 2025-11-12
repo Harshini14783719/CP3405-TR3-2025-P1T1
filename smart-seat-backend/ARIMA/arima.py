@@ -14,7 +14,7 @@ weekday_map = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Fri
 # --------------------------
 # Data Loading and Preprocessing
 # --------------------------
-def load_and_process_data(csv_path="patterned_booking_data_with_bookid.csv"):
+def load_and_process_data(csv_path="patterned_booking_data_with_bookid_1.csv"):
     if not os.path.exists(csv_path):
         return pd.DataFrame()
     df = pd.read_csv(csv_path)
