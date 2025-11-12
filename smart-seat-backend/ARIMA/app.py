@@ -9,7 +9,7 @@ from datetime import datetime
 app = Flask(__name__)
 IMAGE_FOLDER = os.path.join(os.path.dirname(__file__), '')
 
-dataset_path = "structured_booking_data.csv"
+dataset_path = "patterned_booking_data_with_bookid_1.csv.csv"
 if os.path.exists(dataset_path):
     historical_df = pd.read_csv(dataset_path)
 else:
