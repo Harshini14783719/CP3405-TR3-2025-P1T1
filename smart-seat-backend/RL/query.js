@@ -18,9 +18,8 @@ async function getUserBookingState(userId) {
 
   return {
     bookingHistory: bookingRows[0]?.history || 0, # ??? need add
-
     role: userRows[0]?.role || 'student',
-    bookName: bookingRows[0]?.book_name || 'study',
+    book_purpose: bookingRows[0]?.book_name || 'study',
     room: bookingRows[0]?.room || 'A1-01',
     hour: bookingRows[0]?.hour || new Date().getHours()
   };
