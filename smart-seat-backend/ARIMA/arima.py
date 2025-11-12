@@ -6,6 +6,7 @@ from statsmodels.tsa.stattools import adfuller
 from statsmodels.stats.diagnostic import acorr_ljungbox
 import itertools
 import os
+import json
 
 # Weekday mapping (global variable)
 weekday_map = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 4: 'Friday', 5: 'Saturday', 6: 'Sunday'}
@@ -76,12 +77,18 @@ def get_best_arima_params(series, diff_order):
 # Multi-Day Forecasting and Visualization
 # --------------------------
 def forecast_and_visualize(grouped):
-    """Generate 7-day forecast and visualize results"""
+    """Generate 7-day forecast, visualize results, and save model parameters"""
     all_forecasts = []
+    model_params = {'large': {}, 'small': {}}  # It is used to store the model parameters of two types of classrooms
     if grouped.empty:
         return pd.DataFrame()
 
     for class_type in ['small', 'large']:
+        history = []  # Store historical occupancy data
+        d = 0         # Order of difference
+        best_params = None  # Optimal ARIMA parameters
+        total_seats = 140 if class_type == 'large' else 60
+
         for weekday in range(7):  # Iterate through 7 days of the week
             for hour_slot in range(8, 22):  # Iterate through 8:00-21:00
                 # Filter data for current type, weekday, and hour
@@ -91,7 +98,10 @@ def forecast_and_visualize(grouped):
 
                 ts = grouped[mask]['seat_number'].values
                 if len(ts) < 10 or len(np.unique(ts)) < 2:
-                    continue  # 样本量不足或波动不足时跳过
+                    continue
+
+                # save history data
+                history.extend(ts.tolist())
 
                 # Stationarity processing (differencing)
                 original_ts = ts.copy()
@@ -102,24 +112,48 @@ def forecast_and_visualize(grouped):
                     if not adf_test(ts):
                         ts = np.diff(ts)
                         diff_order = 2
-
+                d = diff_order
                 # Skip if data is white noise
                 if not white_noise_test(ts):
                     continue
 
-                # Optimize parameters and forecast next 7 days
+                # Optimize parameters
                 best_params = get_best_arima_params(original_ts, diff_order)
                 if not best_params:
                     continue
+
+        # store
+        model_params[class_type] = {
+            'history': history,
+            'd': d,
+            'best_params': best_params,
+            'total_seats': total_seats
+        }
+
+        for weekday in range(7):
+            for hour_slot in range(8, 22):
+                mask = (grouped['class_type'] == class_type) & \
+                       (grouped['weekday'] == weekday) & \
+                       (grouped['hour_slot'] == hour_slot)
+
+                ts = grouped[mask]['seat_number'].values
+                if len(ts) < 10 or len(np.unique(ts)) < 2:
+                    continue
+
+                original_ts = ts.copy()
+                diff_order = model_params[class_type]['d']
+                best_params = model_params[class_type]['best_params']
+                if not best_params:
+                    continue
+
                 model = ARIMA(original_ts, order=best_params)
                 fit = model.fit()
-                forecast = fit.forecast(steps=7)  # Forecast next 7 days
+                forecast = fit.forecast(steps=7)
                 forecast = np.round(forecast).astype(int)
-                forecast = np.maximum(forecast, 0)  # Ensure non-negative forecasts
+                forecast = np.maximum(forecast, 0)
 
-                # Store forecast results
                 for i in range(7):
-                    forecast_weekday = (weekday + i) % 7  # Cycle through weekdays
+                    forecast_weekday = (weekday + i) % 7
                     all_forecasts.append({
                         'class_type': class_type,
                         'forecast_weekday': forecast_weekday,
@@ -128,11 +162,16 @@ def forecast_and_visualize(grouped):
                         'forecast_weekday_en': weekday_map[forecast_weekday]
                     })
 
+    # Save the model parameters to a JSON file
+    with open('type_model_params.json', 'w') as f:
+        json.dump(model_params, f, indent=2)
+    print("The model parameters have been saved to type_model_params.json")
+
     forecast_df = pd.DataFrame(all_forecasts)
-    plot_weekly_forecast(forecast_df) # Generate visualization
+    plot_weekly_forecast(forecast_df)
 
     forecast_df.to_json('forecast_results.json', orient='records', force_ascii=False)
-    print("The prediction result is saved forecast_results.json")
+    print("The prediction results have been saved to forecast_results.json")
 
     return forecast_df
 
