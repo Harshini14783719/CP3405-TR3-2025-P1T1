@@ -1,5 +1,5 @@
 import numpy as np
-import gym
+import gymnasium as gym
 import requests
 from gym import spaces
 
@@ -8,10 +8,8 @@ class SeatBookingEnv(gym.Env):
         super(SeatBookingEnv, self).__init__()
         self.action_space = spaces.Discrete(3) # 3 actions
         self.observation_space = spaces.Box(
-        #booking_times, book_name, role, room_type, hour
-        #0-5, exam_review=0, study=1, group_discussion=2, teacher=0, student=1, small room=0, large room=1)
-            low=np.array([0, 0, 0, 0, 0]),
-            high=np.array([5, 2, 1, 1, 23]),
+            low=np.array([0, 0, 0, 0, 0], dtype=np.int32),
+            high=np.array([5, 2, 1, 1, 23], dtype=np.int32),
             dtype=np.int32
         )
         self.state = None
@@ -22,7 +20,7 @@ class SeatBookingEnv(gym.Env):
         data = response.json()
 
         # Quantification book_name
-        book_name_code = 0 if data['bookName'] == 'exam_review' else 1 if data['bookName'] == 'study' else 2
+        book_purpose_code = 0 if data['book_purpose'] == 'exam_review' else 1 if data['book_purpose'] == 'study' else 2
         # Quantification role
         role_code = 0 if data['role'] == 'teacher' else 1
         # Quantified classroom types: Small classrooms (such as A1-01) are coded as 0,
@@ -32,7 +30,7 @@ class SeatBookingEnv(gym.Env):
 
         self.state = np.array([
             data['bookingHistory'],
-            book_name_code,
+            book_purpose_code,
             role_code,
             room_code,
             data['hour']
