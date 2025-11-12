@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA
+from datetime import datetime
 
 app = Flask(__name__)
 IMAGE_FOLDER = os.path.join(os.path.dirname(__file__), '')
@@ -13,7 +14,7 @@ if os.path.exists(dataset_path):
     historical_df = pd.read_csv(dataset_path)
 else:
     historical_df = pd.DataFrame(columns=["id", "bookid", "room", "seat_number", "date",
-        "weekday", "start_time", "end_time", "book_name", "status"
+     "start_time", "end_time", "book_name", "status"
     ])
 
 
@@ -58,11 +59,16 @@ def add_booking():
     room = new_booking.get("room")
     seat_number = new_booking.get("seat_number")
     date = new_booking.get("date")
-    weekday = new_booking.get("weekday")
     start_time = new_booking.get("start_time")
     end_time = new_booking.get("end_time")
     book_name = new_booking.get("book_name")
     status = new_booking.get("status")
+
+    try:
+        date_obj = datetime.strptime(date, "%Y-%m-%d")
+        extracted_weekday = date_obj.weekday()  # 动态生成星期值
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Invalid date format: {str(e)}"}), 400
 
     # new data_line
     new_row = {
@@ -71,7 +77,6 @@ def add_booking():
         "room": room,
         "seat_number": seat_number,
         "date": date,
-        "weekday": weekday,
         "start_time": start_time,
         "end_time": end_time,
         "book_name": book_name,
@@ -81,10 +86,43 @@ def add_booking():
     # add in history data
     historical_df = pd.concat([historical_df, pd.DataFrame([new_row])], ignore_index=True)
     historical_df.to_csv(dataset_path, index=False)  # 保存更新后的数据集
-
     return jsonify({"status": "success", "message": "real data has received"})
 
-# Starting the server
+
+# Real-time prediction core logic
+def update_and_predict(room_type, new_data):
+    global history
+    history[room_type] = np.concatenate([history[room_type], new_data])
+    model = ARIMA(history[room_type], order=best_params[room_type])
+    results = model.fit()
+    forecast = results.forecast(steps=1)[0]
+    forecast_seats = max(0, min(int(round(forecast)), total_seats[room_type]))
+    occupancy_rate = round(forecast_seats / total_seats[room_type], 2)
+    return forecast_seats, occupancy_rate
+
+
+# Real-time prediction interface
+@app.route('/realtime/predict', methods=['POST'])
+def realtime_predict():
+    try:
+        data = request.get_json()
+        room_type = data.get("room_type", "small")
+        new_data = np.array(data.get("new_occupied", []), dtype=int)
+        if room_type not in ['large', 'small']:
+            return jsonify({"status": "error", "message": "Room type must be large or small"})
+        forecast, rate = update_and_predict(room_type, new_data)
+        return jsonify({
+            "status": "success",
+            "room_type": room_type,
+            "current_occupied": int(history[room_type][-1]) if len(history[room_type]) > 0 else 0,
+            "forecast_occupied": forecast,
+            "occupancy_rate": rate,
+            "total_seats": total_seats[room_type]
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+
 if __name__ == '__main__':
     print("The real-time data receiving server is started, waiting for a new reservation...")
-    app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=8000, debug=True)
