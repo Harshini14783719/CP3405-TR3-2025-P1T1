@@ -25,7 +25,9 @@ const Seat = () => {
   const [userInfo, setUserInfo] = useState({ id: '', name: '' });
   const [errorMsg, setErrorMsg] = useState('');
   const [predictionData, setPredictionData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const popularSeats = useMemo(() => new Set([4, 6, 13, 16, 37, 38]), []);
+  
 
   const moodOptions = [
     { value: 'Bored', label: 'Bored', icon: '😐' },
@@ -94,6 +96,33 @@ const Seat = () => {
     setRecommendedSeat(null);
     setErrorMsg('');
   }, [location, classroomBuilding, classroomFloor, classroomRoom, selectedDate, selectedHour]);
+
+  useEffect(() => {
+    const fetchPrediction = async () => {
+      if (!selectedDate || !selectedHour || !getRoomIdentifier()) {
+        setPredictionData(null);
+        setIsLoading(false); 
+        return;
+      }
+  
+      setIsLoading(true); 
+      try {
+        const roomType = getRoomIdentifier();
+        const res = await axios.post('/realtime/predict', {
+          room_type: roomType,
+          new_occupied: Array.from(selectedSeats) 
+        });
+        setPredictionData(res.data);
+      } catch (err) {
+        console.error('Error fetching real-time prediction:', err);
+        setPredictionData({ error: err.response?.data?.message || 'Failed to load prediction data' });
+      } finally {
+        setIsLoading(false); 
+      }
+    };
+  
+    fetchPrediction();
+  }, [selectedDate, selectedHour, getRoomIdentifier, selectedSeats]);
 
   const getAvailableFloors = () => {
     switch (classroomBuilding) {
@@ -164,20 +193,33 @@ const Seat = () => {
       setRecommendedSeat(null);
     }
   }, [selectedDate, selectedHour, getRoomIdentifier, fetchBookedSeats]);
+  // Decide seat/table color based on predicted occupancy
+const getSeatColor = (room) => {
+  const occupancyRate = predictionData?.occupancy_rate;
+  if (occupancyRate == null) return '#94a3b8'; // default gray
+  if (occupancyRate > 0.8) return '#ef4444'; // red = crowded
+  if (occupancyRate > 0.5) return '#facc15'; // yellow = moderate
+  return '#10b981'; // green = low usage
+};
 
-  // Fetch prediction data from ARIMA model when seating chart loads
+// Fetch real-time prediction data when seating chart loads
 useEffect(() => {
   const fetchPrediction = async () => {
     try {
-      const res = await axios.get('/api/arimamodel');
+      const roomType = getRoomIdentifier();
+      // Correct backend endpoint for real-time prediction
+      const res = await axios.post('/realtime/predict', {
+        room_type: roomType,
+        new_occupied: Array.from(selectedSeats) // placeholder — modify if your backend expects another field
+      });
       setPredictionData(res.data);
     } catch (err) {
-      console.error('Error fetching ARIMA model data:', err);
+      console.error('Error fetching real-time prediction:', err);
       setPredictionData({ error: 'Failed to load prediction data' });
     }
   };
 
-  // Only load predictions when a location and time are selected
+  // Only fetch predictions when location and time are selected
   if (selectedDate && selectedHour && getRoomIdentifier()) {
     fetchPrediction();
   }
@@ -354,7 +396,7 @@ useEffect(() => {
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
-                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}                        
                       >
                         {seatNum}
                       </div>
@@ -396,10 +438,17 @@ useEffect(() => {
     
     return (
       <div className={`classroom-type1 ${is01To07 ? 'classroom-01-07' : ''}`} style={{ width: isMobile ? 'auto' : (is01To07 ? 1200 : 1000), minWidth: isMobile ? '600px' : 'auto' }}>
-        {/* Door and windows */}
-        <div className="door" style={{ top: '10px', left: '50%', transform: 'translateX(-50%)' }}>🚪 Door</div>
-        <div className="window" style={{ top: '50%', left: '20px' }}>🪟 Window</div>
-        <div className="window" style={{ top: '50%', right: '20px' }}>🪟 Window</div>
+        {/* Door and 4 horizontal windows */}
+        <div className="door" style={{ bottom: '30px', left: '40px' }}>🚪 Door</div>
+
+        {/* Top horizontal windows */}
+        <div className="window horizontal-window" style={{ top: '20px', left: '200px', width: '120px' }}>🪟</div>
+        <div className="window horizontal-window" style={{ top: '20px', right: '200px', width: '120px' }}>🪟</div>
+
+        {/* Bottom horizontal windows */}
+        <div className="window horizontal-window" style={{ bottom: '20px', left: '200px', width: '120px' }}>🪟</div>
+        <div className="window horizontal-window" style={{ bottom: '20px', right: '200px', width: '120px' }}>🪟</div>
+
         <div className="left-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
           <div className="table-seats top-seats">
             {[1, 2, 3].map(seatNum => (
@@ -606,10 +655,16 @@ useEffect(() => {
     
     return (
       <div className="classroom-type2" style={{ width: isMobile ? 'auto' : 900, minWidth: isMobile ? '500px' : 'auto' }}>
-        {/* Door and windows */}
-        <div className="door" style={{ top: '10px', left: '50%', transform: 'translateX(-50%)' }}>🚪 Door</div>
-        <div className="window" style={{ top: '50%', left: '20px' }}>🪟 Window</div>
-        <div className="window" style={{ top: '50%', right: '20px' }}>🪟 Window</div>
+        {/* Door and 4 horizontal windows */}
+        <div className="door" style={{ bottom: '30px', left: '40px' }}>🚪 Door</div>
+
+        {/* Top horizontal windows */}
+        <div className="window horizontal-window" style={{ top: '20px', left: '200px', width: '120px' }}>🪟</div>
+        <div className="window horizontal-window" style={{ top: '20px', right: '200px', width: '120px' }}>🪟</div>
+
+        {/* Bottom horizontal windows */}
+        <div className="window horizontal-window" style={{ bottom: '20px', left: '200px', width: '120px' }}>🪟</div>
+        <div className="window horizontal-window" style={{ bottom: '20px', right: '200px', width: '120px' }}>🪟</div>
 
         <div className="staircase-area"></div>
         <div className="classroom-type2-rows">
@@ -1243,7 +1298,8 @@ useEffect(() => {
 }
 .vertical-window {
   width: 16px;
-  background-color: #e0f2fe;
+  height: 100px;
+  background-color: rgba(224, 242, 254, 0.85); /* translucent glass look */
   border: 2px solid #0ea5e9;
   border-radius: 6px;
   position: absolute;
@@ -1251,9 +1307,20 @@ useEffect(() => {
   align-items: center;
   justify-content: center;
   font-size: 1.3rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 0 6px rgba(14, 165, 233, 0.4), 0 2px 6px rgba(0,0,0,0.1);
 }
-
+.horizontal-window {
+  height: 16px;
+  background-color: rgba(224, 242, 254, 0.85); /* translucent glass */
+  border: 2px solid #0ea5e9;
+  border-radius: 6px;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  box-shadow: inset 0 0 6px rgba(14, 165, 233, 0.4), 0 2px 6px rgba(0,0,0,0.1);
+}
 
 @media (max-width: 768px) {
   .seat-container {
@@ -1502,6 +1569,7 @@ useEffect(() => {
             <div className="end-time-display">
               Duration: {durationHrs} hour(s) (Ends at {endTime}:00)
             </div>
+
           </div>
           
           {errorMsg && (
@@ -1563,16 +1631,24 @@ useEffect(() => {
             </div>
             {predictionData && (
               <div style={{ marginTop: '20px', padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '6px' }}>
-                <h3 style={{ color: '#1e40af' }}>Predicted Usage Data</h3>
+                <h3 style={{ color: '#1e40af', marginBottom: '10px' }}>Predicted Usage</h3>
                 {predictionData.error ? (
                   <p style={{ color: 'red' }}>{predictionData.error}</p>
                 ) : (
-                  <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.9rem', color: '#334155' }}>
-                    {JSON.stringify(predictionData, null, 2)}
-                  </pre>
+                  <ul style={{ listStyleType: 'none', padding: 0, color: '#334155' }}>
+                    {Object.entries(predictionData).map(([room, value]) => (
+                      <li key={room} style={{ marginBottom: '6px' }}>
+                        <strong>{room}</strong>: {value}%
+                      </li>
+                    ))}
+                  </ul>
                 )}
+                 
+                {isLoading && <div style={{ marginTop: '20px', color: '#666' }}>Loading prediction data...</div>}
+                {predictionData?.error && <div style={{ marginTop: '20px', color: 'red' }}>{predictionData.error}</div>}
               </div>
             )}
+
             <div className="mobile-summary">
               {renderSelectionSummary()}
             </div>
