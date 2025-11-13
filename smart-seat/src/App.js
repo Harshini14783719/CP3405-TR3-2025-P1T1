@@ -9,6 +9,7 @@ import Seat from './seat';
 import SeatRecords from './seat-records';
 import Mine from './mine';
 import LecClass from './lec-class';
+import Canteen1 from './Canteen1';
 
 
 function App() {
@@ -856,6 +857,7 @@ function App() {
         <Route path="/seat-records" element={<PrivateRoute element={<SeatRecords />} />} />
         <Route path="/mine" element={<PrivateRoute element={<Mine />} />} />
         <Route path="/lec-class" element={<PrivateRoute element={<LecClass />} requireLecturer={true} />} />
+        <Route path="/canteen-1" element={<PrivateRoute element={<Canteen1 />} />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
       

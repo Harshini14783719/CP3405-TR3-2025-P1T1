@@ -187,14 +187,20 @@ const Seat = () => {
   }, [selectedHour, durationHrs]);
 
   useEffect(() => {
-    if (selectedDate && selectedHour && getRoomIdentifier()) {
+    if (selectedDate && selectedHour && endTime && getRoomIdentifier()) {
       fetchBookedSeats();
+    }
+  }, [selectedDate, selectedHour, endTime, getRoomIdentifier(), fetchBookedSeats]);
+
+  useEffect(() => {
+    if (selectedDate && selectedHour && getRoomIdentifier() && endTime) {
       setShowRecommendBtn(true);
     } else {
       setShowRecommendBtn(false);
       setRecommendedSeat(null);
+      setLoading(false);
     }
-  }, [selectedDate, selectedHour, getRoomIdentifier, fetchBookedSeats]);
+  }, [selectedDate, selectedHour, endTime, getRoomIdentifier, fetchBookedSeats]);
 
   const toggleSeat = (seatNumber) => {
     if (bookedSeats[seatNumber]) return;
