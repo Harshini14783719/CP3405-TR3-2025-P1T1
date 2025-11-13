@@ -328,10 +328,17 @@ useEffect(() => {
     
     return (
       <div className="library-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
-        {/* Door and windows */}
-        <div className="door" style={{ bottom: '10px', left: '50%', transform: 'translateX(-50%)' }}>🚪 Door</div>
-        <div className="window" style={{ top: '10px', left: '30%' }}>🪟 Window</div>
-        <div className="window" style={{ top: '10px', right: '30%' }}>🪟 Window</div>
+        {/* Door and 4 clean vertical windows */}
+        <div className="door" style={{ bottom: '30px', left: '40px' }}>🚪 Door</div>
+
+        {/* Left-side windows */}
+        <div className="window vertical-window" style={{ top: '80px', left: '20px', height: '100px' }}>🪟</div>
+        <div className="window vertical-window" style={{ bottom: '140px', left: '20px', height: '100px' }}>🪟</div>
+
+        {/* Right-side windows */}
+        <div className="window vertical-window" style={{ top: '80px', right: '20px', height: '100px' }}>🪟</div>
+        <div className="window vertical-window" style={{ bottom: '140px', right: '20px', height: '100px' }}>🪟</div>
+
         {[...Array(columns)].map((_, colIndex) => (
           <div key={`col-${colIndex + 1}`} className="library-column">
             {[...Array(tablesPerColumn)].map((_, tableIndex) => (
@@ -1001,17 +1008,23 @@ useEffect(() => {
   gap: 40px;
 }
 .library-layout {
+  position: relative;
   display: flex;
   width: 100%;
   justify-content: space-around;
   padding: 20px;
+  min-height: 650px;
+  align-items: flex-start;
 }
+
 .library-column {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 40px;
+  z-index: 1;
 }
+
 .classroom-type1 {
   position: relative;
   width: 1000px;
@@ -1228,6 +1241,19 @@ useEffect(() => {
   background-color: #e0f2fe;
   border: 2px solid #0ea5e9;
 }
+.vertical-window {
+  width: 16px;
+  background-color: #e0f2fe;
+  border: 2px solid #0ea5e9;
+  border-radius: 6px;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
 
 @media (max-width: 768px) {
   .seat-container {
