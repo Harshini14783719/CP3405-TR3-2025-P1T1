@@ -1,8 +1,13 @@
 const express = require('express');
-const axios = require('axios'); // ✅ 必须加
+const axios = require('axios');
+const cors = require('cors'); // <--- 第 1 步：引入 cors 模块
 const { getUserBookingState } = require('./query');
 const app = express();
 const port = 4000;
+
+// 第 2 步：在所有路由之前，使用 cors() 中间件
+// 这会让你的服务器允许来自其他源（比如 http://localhost:3000）的请求
+app.use(cors());
 
 // interface 1：provide user status data to the RL environment
 app.get('/api/rl-state', async (req, res) => {

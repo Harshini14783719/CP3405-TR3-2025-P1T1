@@ -38,9 +38,24 @@ class SeatBookingEnv(gym.Env):
         book_purpose_code = book_purpose_map.get(data['book_purpose'], 2)  # Default to 2 for other purposes
         # Quantification role
         role_code = 0 if data['role'] == 'teacher' else 1
-        # Quantified classroom types: Small classrooms (e.g., A1-01) = 0, Large (e.g., C2-13) = 1
-        room_num = int(data['room'].split('-')[1])
-        room_code = 0 if room_num <= 12 else 1
+
+        # === MODIFIED PART START ===
+        # Robustly handle different room formats to prevent IndexError
+        room_name = data.get('room', '')  # Safely get room, default to empty string
+        room_code = 0  # Default value for room_code
+
+        if '-' in room_name:
+            try:
+                # Try to split and convert the room number
+                room_num_str = room_name.split('-')[1]
+                room_num = int(room_num_str)
+                room_code = 0 if room_num <= 12 else 1  # small room 01-12, large room 13-15
+            except (ValueError, IndexError):
+                # If splitting fails or the part after '-' is not a number,
+                # the default room_code = 0 will be used.
+                pass
+        # If room_name does not contain '-', the default room_code = 0 will also be used.
+        # === MODIFIED PART END ===
 
         self.state = np.array([
             data['bookingHistory'],

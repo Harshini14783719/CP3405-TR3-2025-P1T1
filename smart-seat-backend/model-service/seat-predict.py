@@ -11,7 +11,7 @@ import pandas as pd
 app = Flask(__name__)
 CORS(app)
 
-model_dir = '/app/models'
+model_dir = '../models'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 try:

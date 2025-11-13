@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 
-const PREDICTION_SERVICE_URL = 'http://flask-service:5002/api/predict-seat';
+const PREDICTION_SERVICE_URL = 'http://127.0.0.1:5002/api/predict-seat';
 
 const axiosInstance = axios.create({
   timeout: 20000,

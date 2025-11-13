@@ -7,92 +7,104 @@ from statsmodels.tsa.arima.model import ARIMA
 from datetime import datetime
 
 app = Flask(__name__)
-IMAGE_FOLDER = os.path.join(os.path.dirname(__file__), '')
+APP_ROOT = os.path.dirname(__file__)
+IMAGE_FOLDER = APP_ROOT  # 存放预测图像的目录
 
-dataset_path = "patterned_booking_data_with_bookid_1.csv.csv"
+# ----------------------------
+# Load historical data
+# ----------------------------
+dataset_path = os.path.join(APP_ROOT, "patterned_booking_data_with_bookid_1.csv")
 if os.path.exists(dataset_path):
     historical_df = pd.read_csv(dataset_path)
 else:
-    historical_df = pd.DataFrame(columns=["id", "bookid", "room", "seat_number", "date",
-     "start_time", "end_time", "book_name", "status"
+    historical_df = pd.DataFrame(columns=[
+        "id", "bookid", "room", "seat_number", "date",
+        "start_time", "end_time", "book_name", "status"
     ])
 
+# ----------------------------
+# Load model parameters
+# ----------------------------
+model_params_path = os.path.join(APP_ROOT, "type_model_params.json")
+if os.path.exists(model_params_path):
+    with open(model_params_path, "r") as f:
+        model_data = json.load(f)
+    history = {
+        'large': np.array(model_data['large']['history']),
+        'small': np.array(model_data['small']['history'])
+    }
+    d = {
+        'large': model_data['large']['d'],
+        'small': model_data['small']['d']
+    }
+    best_params = {
+        'large': tuple(model_data['large']['best_params']),
+        'small': tuple(model_data['small']['best_params'])
+    }
+    total_seats = {
+        'large': model_data['large']['total_seats'],
+        'small': model_data['small']['total_seats']
+    }
+else:
+    history = {'large': np.array([]), 'small': np.array([])}
+    d = {'large': 0, 'small': 0}
+    best_params = {'large': (1,0,0), 'small': (1,0,0)}
+    total_seats = {'large': 140, 'small': 60}
 
-# Loading model parameters (new add)
-with open("type_model_params.json", "r") as f:
-    model_data = json.load(f)
-history = {
-    'large': np.array(model_data['large']['history']),
-    'small': np.array(model_data['small']['history'])
-}
-d = {
-    'large': model_data['large']['d'],
-    'small': model_data['small']['d']
-}
-best_params = {
-    'large': tuple(model_data['large']['best_params']),
-    'small': tuple(model_data['small']['best_params'])
-}
-total_seats = {
-    'large': model_data['large']['total_seats'],
-    'small': model_data['small']['total_seats']
-}
+# ----------------------------
+# Root route
+# ----------------------------
+@app.route('/')
+def home():
+    return "Smart Seat ARIMA Service is running! Use /realtime/predict or /add_booking API."
 
-# Image access interface
+# ----------------------------
+# Serve forecast images
+# ----------------------------
 @app.route('/get_plot/<room_type>')
 def get_plot(room_type):
     if room_type not in ['large', 'small']:
-        return "Invalid room type", 400
-    filename = f"{room_type}_forecast_plot.png"
-    if not os.path.exists(os.path.join(IMAGE_FOLDER, filename)):
-        return "Plot not found. Please run arima_model.py first.", 404
+        return jsonify({"status": "error", "message": "Invalid room type"}), 400
+    filename = f"{room_type}_weekly_forecast.png"
+    file_path = os.path.join(IMAGE_FOLDER, filename)
+    if not os.path.exists(file_path):
+        return jsonify({"status": "error", "message": "Plot not found. Run ARIMA forecast first."}), 404
     return send_from_directory(IMAGE_FOLDER, filename)
 
-
-# Define the interface to receive new reservation data
+# ----------------------------
+# Add new booking
+# ----------------------------
 @app.route('/add_booking', methods=['POST'])
 def add_booking():
     global historical_df
-    new_booking = request.json
-
-    bookid = new_booking.get("bookid")
-    room = new_booking.get("room")
-    seat_number = new_booking.get("seat_number")
-    date = new_booking.get("date")
-    start_time = new_booking.get("start_time")
-    end_time = new_booking.get("end_time")
-    book_name = new_booking.get("book_name")
-    status = new_booking.get("status")
-
     try:
-        date_obj = datetime.strptime(date, "%Y-%m-%d")
-        extracted_weekday = date_obj.weekday()  # 动态生成星期值
+        new_booking = request.get_json()
+        date_obj = datetime.strptime(new_booking.get("date"), "%Y-%m-%d")
     except Exception as e:
         return jsonify({"status": "error", "message": f"Invalid date format: {str(e)}"}), 400
 
-    # new data_line
     new_row = {
-        "id": len(historical_df) + 1,  # 自动生成id
-        "bookid": bookid,
-        "room": room,
-        "seat_number": seat_number,
-        "date": date,
-        "start_time": start_time,
-        "end_time": end_time,
-        "book_name": book_name,
-        "status": status
+        "id": len(historical_df) + 1,
+        "bookid": new_booking.get("bookid"),
+        "room": new_booking.get("room"),
+        "seat_number": new_booking.get("seat_number"),
+        "date": new_booking.get("date"),
+        "start_time": new_booking.get("start_time"),
+        "end_time": new_booking.get("end_time"),
+        "book_name": new_booking.get("book_name"),
+        "status": new_booking.get("status")
     }
-
-    # add in history data
     historical_df = pd.concat([historical_df, pd.DataFrame([new_row])], ignore_index=True)
-    historical_df.to_csv(dataset_path, index=False)  # 保存更新后的数据集
-    return jsonify({"status": "success", "message": "real data has received"})
+    historical_df.to_csv(dataset_path, index=False)
+    return jsonify({"status": "success", "message": "New booking received"})
 
-
-# Real-time prediction core logic
+# ----------------------------
+# Real-time prediction
+# ----------------------------
 def update_and_predict(room_type, new_data):
     global history
-    history[room_type] = np.concatenate([history[room_type], new_data])
+    if len(new_data) > 0:
+        history[room_type] = np.concatenate([history[room_type], new_data])
     model = ARIMA(history[room_type], order=best_params[room_type])
     results = model.fit()
     forecast = results.forecast(steps=1)[0]
@@ -100,16 +112,14 @@ def update_and_predict(room_type, new_data):
     occupancy_rate = round(forecast_seats / total_seats[room_type], 2)
     return forecast_seats, occupancy_rate
 
-
-# Real-time prediction interface
 @app.route('/realtime/predict', methods=['POST'])
 def realtime_predict():
     try:
         data = request.get_json()
         room_type = data.get("room_type", "small")
-        new_data = np.array(data.get("new_occupied", []), dtype=int)
         if room_type not in ['large', 'small']:
-            return jsonify({"status": "error", "message": "Room type must be large or small"})
+            return jsonify({"status": "error", "message": "Room type must be 'large' or 'small'"})
+        new_data = np.array(data.get("new_occupied", []), dtype=int)
         forecast, rate = update_and_predict(room_type, new_data)
         return jsonify({
             "status": "success",
@@ -122,7 +132,7 @@ def realtime_predict():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
-
+# ----------------------------
 if __name__ == '__main__':
-    print("The real-time data receiving server is started, waiting for a new reservation...")
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    print("The real-time data receiving server is started, waiting for new bookings...")
+    app.run(host='0.0.0.0', port=8002, debug=True)

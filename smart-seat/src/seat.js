@@ -24,6 +24,13 @@ const Seat = () => {
   const [scrollY, setScrollY] = useState(0);
   const [userInfo, setUserInfo] = useState({ id: '', name: '' });
   const [errorMsg, setErrorMsg] = useState('');
+  const [bookPurpose, setBookPurpose] = useState('study');
+  const [rlTestResponse, setRlTestResponse] = useState(null);
+
+  // 新增: 用于存储和控制右下角预测图的 state
+  const [plotImageUrl, setPlotImageUrl] = useState('');
+  const [showPlot, setShowPlot] = useState(true);
+
   const popularSeats = useMemo(() => new Set([4, 6, 13, 16, 37, 38]), []);
 
   const moodOptions = [
@@ -53,6 +60,31 @@ const Seat = () => {
       setUserInfo({ id: currentUser.id, name: currentUser.name });
     }
   }, []);
+
+  // 新增: useEffect 用于根据选择的地点获取预测图
+  useEffect(() => {
+    let room_type = '';
+
+    if (location === 'canteen' || (location === 'library' && libraryFloor)) {
+      room_type = 'large';
+    } else if (location === 'classroom' && classroomRoom) {
+      const roomNum = classroomRoom.split('-')[1];
+      if (['13', '14', '15'].includes(roomNum)) {
+        room_type = 'large';
+      } else if (roomNum) {
+        room_type = 'small';
+      }
+    }
+
+    if (room_type) {
+      // 使用时间戳作为查询参数来防止浏览器缓存图片
+      setPlotImageUrl(`http://127.0.0.1:8002/get_plot/${room_type}?_=${new Date().getTime()}`);
+      setShowPlot(true); // 当地点变化时，重新显示图片窗口
+    } else {
+      setPlotImageUrl(''); // 如果没有有效的地点，则清空URL
+    }
+
+  }, [location, libraryFloor, classroomRoom]);
 
   const getRoomIdentifier = useCallback(() => {
     switch (location) {
@@ -188,7 +220,8 @@ const Seat = () => {
           date: selectedDate,
           start_time,
           end_time,
-          status: 1
+          status: 1,
+          book_purpose: bookPurpose
         });
       }
       alert('Booking successful!');
@@ -211,14 +244,14 @@ const Seat = () => {
       const room = getRoomIdentifier();
       const time_slot = `${selectedHour}:00`;
       const booked_seats = Object.keys(bookedSeats).join(',');
-      
+
       const response = await axios.post('/api/recommend/seat', {
         room_id: room,
         time_slot: time_slot,
         booked_seats: booked_seats,
         user_mood: selectedMood
       });
-      
+
       if (response.data.seat_number) {
         setRecommendedSeat(response.data.seat_number);
         setShowMoodModal(false);
@@ -241,6 +274,26 @@ const Seat = () => {
     }
   };
 
+  const handleRLTest = async () => {
+    if (!userInfo.id) {
+      alert('User information is not available.');
+      return;
+    }
+    setLoading(true);
+    setRlTestResponse(null);
+    try {
+      const response = await axios.get(`http://localhost:4000/api/rl-decision?userId=${userInfo.id}`);
+      setRlTestResponse(response.data);
+    } catch (error) {
+      console.error('RL Test Error:', error);
+      const errorMessage = error.response?.data?.message || 'An error occurred.';
+      setRlTestResponse({ error: 'RL Test failed', detail: errorMessage });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   const renderCanteenSeats = () => {
     const isMobile = window.innerWidth < 768;
     const columns = isMobile ? 3 : 3;
@@ -248,7 +301,7 @@ const Seat = () => {
     const seatsPerTable = isMobile ? 2 : 3;
     const seatSize = isMobile ? 25 : 30;
     const seatMargin = isMobile ? 3 : 8;
-    
+
     return (
       <div className="canteen-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
         {[...Array(columns)].map((_, colIndex) => (
@@ -260,12 +313,11 @@ const Seat = () => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2;
                     const seatNum = baseNum + seatIndex + 1;
                     return (
-                      <div 
+                      <div
                         key={seatNum}
                         data-seat={seatNum}
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -278,12 +330,11 @@ const Seat = () => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2 + seatsPerTable;
                     const seatNum = baseNum + seatIndex + 1;
                     return (
-                      <div 
+                      <div
                         key={seatNum}
                         data-seat={seatNum}
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -306,7 +357,7 @@ const Seat = () => {
     const seatsPerTable = isMobile ? 3 : 4;
     const seatSize = isMobile ? 25 : 30;
     const seatMargin = isMobile ? 3 : 8;
-    
+
     return (
       <div className="library-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
         {[...Array(columns)].map((_, colIndex) => (
@@ -318,12 +369,11 @@ const Seat = () => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2;
                     const seatNum = baseNum + seatIndex + 1;
                     return (
-                      <div 
+                      <div
                         key={seatNum}
                         data-seat={seatNum}
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -336,12 +386,11 @@ const Seat = () => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2 + seatsPerTable;
                     const seatNum = baseNum + seatIndex + 1;
                     return (
-                      <div 
+                      <div
                         key={seatNum}
                         data-seat={seatNum}
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -363,18 +412,17 @@ const Seat = () => {
     const is01To07 = roomNum && parseInt(roomNum, 10) >= 1 && parseInt(roomNum, 10) <= 7;
     const seatSize = isMobile ? 25 : 30;
     const seatMargin = isMobile ? 3 : 8;
-    
+
     return (
       <div className={`classroom-type1 ${is01To07 ? 'classroom-01-07' : ''}`} style={{ width: isMobile ? 'auto' : (is01To07 ? 1200 : 1000), minWidth: isMobile ? '600px' : 'auto' }}>
         <div className="left-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
           <div className="table-seats top-seats">
             {[1, 2, 3].map(seatNum => (
-              <div 
+              <div
                 key={seatNum}
                 data-seat={seatNum}
                 className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
-                disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
                 {seatNum}
@@ -383,12 +431,11 @@ const Seat = () => {
           </div>
           <div className="table-seats bottom-seats">
             {[4, 5, 6].map(seatNum => (
-              <div 
+              <div
                 key={seatNum}
                 data-seat={seatNum}
                 className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
-                disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
                 {seatNum}
@@ -399,12 +446,11 @@ const Seat = () => {
         <div className="right-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
           <div className="table-seats top-seats">
             {[7, 8, 9].map(seatNum => (
-              <div 
+              <div
                 key={seatNum}
                 data-seat={seatNum}
                 className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
-                disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
                 {seatNum}
@@ -413,12 +459,11 @@ const Seat = () => {
           </div>
           <div className="table-seats bottom-seats">
             {[10, 11, 12].map(seatNum => (
-              <div 
+              <div
                 key={seatNum}
                 data-seat={seatNum}
                 className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                 onClick={() => toggleSeat(seatNum)}
-                disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
                 {seatNum}
@@ -433,12 +478,11 @@ const Seat = () => {
                 <>
                   <div className="table-seats top-seats">
                     {[13 + (tableNum - 1) * 12, 14 + (tableNum - 1) * 12, 15 + (tableNum - 1) * 12].map(seatNum => (
-                      <div 
+                      <div
                         key={seatNum}
                         data-seat={seatNum}
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -447,12 +491,11 @@ const Seat = () => {
                   </div>
                   <div className="table-seats bottom-seats">
                     {[16 + (tableNum - 1) * 12, 17 + (tableNum - 1) * 12, 18 + (tableNum - 1) * 12].map(seatNum => (
-                      <div 
+                      <div
                         key={seatNum}
                         data-seat={seatNum}
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -463,12 +506,11 @@ const Seat = () => {
               )}
               <div className="table-seats left-seats">
                 {[19 + (tableNum - 1) * 12, 20 + (tableNum - 1) * 12, 21 + (tableNum - 1) * 12].map(seatNum => (
-                  <div 
+                  <div
                     key={seatNum}
                     data-seat={seatNum}
                     className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
-                    disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
                   >
                     {seatNum}
@@ -477,12 +519,11 @@ const Seat = () => {
               </div>
               <div className="table-seats right-seats">
                 {[22 + (tableNum - 1) * 12, 23 + (tableNum - 1) * 12, 24 + (tableNum - 1) * 12].map(seatNum => (
-                  <div 
+                  <div
                     key={seatNum}
                     data-seat={seatNum}
                     className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
-                    disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
                   >
                     {seatNum}
@@ -499,12 +540,11 @@ const Seat = () => {
                 <>
                   <div className="table-seats top-seats">
                     {[49 + (tableNum - 1) * 12, 50 + (tableNum - 1) * 12, 51 + (tableNum - 1) * 12].map(seatNum => (
-                      <div 
+                      <div
                         key={seatNum}
                         data-seat={seatNum}
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -513,12 +553,11 @@ const Seat = () => {
                   </div>
                   <div className="table-seats bottom-seats">
                     {[52 + (tableNum - 1) * 12, 53 + (tableNum - 1) * 12, 54 + (tableNum - 1) * 12].map(seatNum => (
-                      <div 
+                      <div
                         key={seatNum}
                         data-seat={seatNum}
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -529,12 +568,11 @@ const Seat = () => {
               )}
               <div className="table-seats left-seats">
                 {[55 + (tableNum - 1) * 12, 56 + (tableNum - 1) * 12, 57 + (tableNum - 1) * 12].map(seatNum => (
-                  <div 
+                  <div
                     key={seatNum}
                     data-seat={seatNum}
                     className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
-                    disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
                   >
                     {seatNum}
@@ -543,12 +581,11 @@ const Seat = () => {
               </div>
               <div className="table-seats right-seats">
                 {[58 + (tableNum - 1) * 12, 59 + (tableNum - 1) * 12, 60 + (tableNum - 1) * 12].map(seatNum => (
-                  <div 
+                  <div
                     key={seatNum}
                     data-seat={seatNum}
                     className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                     onClick={() => toggleSeat(seatNum)}
-                    disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
                   >
                     {seatNum}
@@ -569,7 +606,7 @@ const Seat = () => {
     const totalSeatsPerRow = seatsPerSide * 2;
     const seatSize = isMobile ? 25 : 30;
     const seatMargin = isMobile ? 2 : 0;
-    
+
     return (
       <div className="classroom-type2" style={{ width: isMobile ? 'auto' : 900, minWidth: isMobile ? '500px' : 'auto' }}>
         <div className="staircase-area"></div>
@@ -579,8 +616,8 @@ const Seat = () => {
             const rowBaseNum = rowIndex * totalSeatsPerRow;
             const isStaircaseRow = rowNum <= 5;
             return (
-              <div 
-                key={`row-${rowNum}`} 
+              <div
+                key={`row-${rowNum}`}
                 className={`classroom-row ${isStaircaseRow ? 'staircase-row' : ''}`}
                 style={{ gap: isMobile ? 10 : 30 }}
               >
@@ -588,12 +625,11 @@ const Seat = () => {
                   {[...Array(seatsPerSide)].map((_, seatIndex) => {
                     const seatNum = rowBaseNum + seatIndex + 1;
                     return (
-                      <div 
+                      <div
                         key={seatNum}
                         data-seat={seatNum}
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
                       >
                         {seatNum}
@@ -605,12 +641,11 @@ const Seat = () => {
                   {[...Array(seatsPerSide)].map((_, seatIndex) => {
                     const seatNum = rowBaseNum + seatsPerSide + seatIndex + 1;
                     return (
-                      <div 
+                      <div
                         key={seatNum}
                         data-seat={seatNum}
                         className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
                       >
                         {seatNum}
@@ -695,7 +730,7 @@ const Seat = () => {
           margin: 0;
           padding: 0;
         }
-        
+
         .seat-container {
   display: flex;
   flex-direction: row;
@@ -841,6 +876,53 @@ const Seat = () => {
   transform: translateY(-2px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
+.rl-test-button {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 0.85rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  margin-top: 1rem;
+}
+.rl-test-button:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.rl-test-button:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.rl-response-container {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.rl-response-container h4 {
+  margin-bottom: 0.75rem;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.rl-response-container pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: 0.9rem;
+  color: #0f172a;
+  background-color: #ffffff;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
 .selection-summary {
   margin-top: 2.5rem;
   padding-top: 1.8rem;
@@ -1178,67 +1260,105 @@ const Seat = () => {
   transform: translateY(-2px);
 }
 
+/* 新增: 右下角预测图的样式 */
+.plot-image-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1020;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 5px 10px rgba(0,0,0,0.05);
+  padding: 10px;
+  transition: all 0.3s ease-in-out;
+}
+.plot-image-container img {
+  display: block;
+  max-width: 400px;
+  max-height: 300px;
+  border-radius: 4px;
+}
+.plot-close-button {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background-color: #0f172a;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+
 @media (max-width: 768px) {
   .seat-container {
     flex-direction: column;
     margin-top: 20px;
   }
-  
+
   .seat-sidebar, .seat-main {
     width: 100%;
     padding: 1.5rem;
   }
-  
+
   .seat-sidebar {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   }
-  
+
   .seat-content h1 {
     font-size: 1.5rem;
     margin-bottom: 1.5rem;
   }
-  
+
   .form-group {
     margin-bottom: 1.2rem;
   }
-  
+
   .seat {
     width: 40px;
     height: 40px;
     font-size: 14px;
     margin: 0 5px;
   }
-  
+
   .seat-map-container {
     padding: 1rem;
     min-height: 400px;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .horizontal-table {
     width: 140px;
     height: 50px;
   }
-  
+
   .vertical-table {
     width: 50px;
     height: 140px;
   }
-  
+
   .classroom-type1, .classroom-01-07, .classroom-type2 {
     height: auto;
     padding: 20px 10px;
     overflow: visible;
     min-height: 400px;
   }
-  
+
   .front-wall-tables, .back-wall-tables {
     gap: 30px !important;
     flex-wrap: wrap;
     width: 100% !important;
   }
-  
+
   .left-wall-table, .right-wall-table {
     position: relative;
     left: 0;
@@ -1247,40 +1367,40 @@ const Seat = () => {
     transform: none;
     margin: 20px auto;
   }
-  
+
   .front-wall-tables {
     top: 20px;
     margin-bottom: 40px;
   }
-  
+
   .back-wall-tables {
     bottom: 20px;
     margin-top: 40px;
   }
-  
+
   .classroom-row {
     gap: 15px;
   }
-  
+
   .canteen-column, .library-column {
     gap: 20px;
   }
-  
+
   .seat-notification {
     padding: 0.5rem 1rem;
     font-size: 0.9rem;
     top: 60px;
   }
-  
+
   .booking-button, .recommend-button {
     padding: 1rem;
     font-size: 1.1rem;
   }
-  
+
   .sidebar-summary {
     display: none;
   }
-  
+
   .mobile-summary {
     display: block;
     margin-top: 2rem;
@@ -1289,9 +1409,18 @@ const Seat = () => {
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
-  
+
   .mood-options {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* 新增: 调整预测图在手机上的大小和位置 */
+  .plot-image-container {
+    bottom: 10px;
+    right: 10px;
+  }
+  .plot-image-container img {
+    max-width: 150px;
   }
 }
         `}
@@ -1426,13 +1555,26 @@ const Seat = () => {
               Duration: {durationHrs} hour(s) (Ends at {endTime}:00)
             </div>
           </div>
-          
+
+          <div className="form-group">
+            <label>Booking Purpose</label>
+            <select
+              value={bookPurpose}
+              onChange={(e) => setBookPurpose(e.target.value)}
+              className="form-control"
+            >
+              <option value="study">Study</option>
+              <option value="exam_review">Exam Review</option>
+              <option value="group_discussion">Group Discussion</option>
+            </select>
+          </div>
+
           {errorMsg && (
             <div style={{ margin: '1rem 0', padding: '0.8rem', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: '6px', fontSize: '0.9rem' }}>
               {errorMsg}
             </div>
           )}
-          
+
           <button
             className="recommend-button"
             onClick={() => setShowMoodModal(true)}
@@ -1440,7 +1582,24 @@ const Seat = () => {
           >
             Get Seat Recommendation
           </button>
-          
+
+          <button
+            className="rl-test-button"
+            onClick={handleRLTest}
+            disabled={!userInfo.id || loading}
+          >
+            Smart Allocation
+          </button>
+
+          {rlTestResponse && (
+            <div className="rl-response-container">
+              <h4>Purpose Recommendation:</h4>
+              <pre>
+                {JSON.stringify(rlTestResponse, null, 2)}
+              </pre>
+            </div>
+          )}
+
           <div className={`mood-modal-overlay ${showMoodModal ? 'active' : ''}`}>
             <div className="mood-modal">
               <h3>How are you feeling today?</h3>
@@ -1457,13 +1616,13 @@ const Seat = () => {
                 ))}
               </div>
               <div className="modal-actions">
-                <button 
+                <button
                   className="modal-button cancel"
                   onClick={() => setShowMoodModal(false)}
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   className="modal-button confirm"
                   onClick={handleGetRecommendation}
                   disabled={!selectedMood || loading}
@@ -1473,7 +1632,7 @@ const Seat = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="sidebar-summary">
             {renderSelectionSummary()}
           </div>
@@ -1490,6 +1649,16 @@ const Seat = () => {
           </div>
         </div>
       </div>
+
+      {/* 新增: 用于显示右下角预测图的 JSX 结构 */}
+      {plotImageUrl && showPlot && (
+        <div className="plot-image-container">
+          <button className="plot-close-button" onClick={() => setShowPlot(false)}>
+            &times;
+          </button>
+          <img src={plotImageUrl} alt="Room usage prediction plot" />
+        </div>
+      )}
     </div>
   );
 };
