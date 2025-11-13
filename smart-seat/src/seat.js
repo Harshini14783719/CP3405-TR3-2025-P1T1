@@ -5,6 +5,7 @@ const Seat = () => {
   const OPEN_HOUR = 6;
   const CLOSE_HOUR = 23;
   const MAX_DURATION = 3;
+
   const [location, setLocation] = useState('');
   const [libraryFloor, setLibraryFloor] = useState('');
   const [classroomBuilding, setClassroomBuilding] = useState('');
@@ -12,6 +13,7 @@ const Seat = () => {
   const [classroomRoom, setClassroomRoom] = useState('');
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [bookedSeats, setBookedSeats] = useState({});
+  const [maintenanceSeats, setMaintenanceSeats] = useState({}); // NEW: maintenance mapping
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedHour, setSelectedHour] = useState('');
   const [durationHrs, setDurationHrs] = useState(1);
@@ -22,12 +24,10 @@ const Seat = () => {
   const [recommendedSeat, setRecommendedSeat] = useState(null);
   const [selectedMood, setSelectedMood] = useState('');
   const [scrollY, setScrollY] = useState(0);
-  const [userInfo, setUserInfo] = useState({ id: '', name: '', role: '' });
+  const [userInfo, setUserInfo] = useState({ id: '', name: '', role: '' }); // role added
   const [errorMsg, setErrorMsg] = useState('');
-  const popularSeats = useMemo(() => new Set([4, 6, 13, 16, 37, 38]), []);
 
-  // ✅ Is this user an admin?
-  const isAdmin = userInfo.role === 'admin';
+  const popularSeats = useMemo(() => new Set([4, 6, 13, 16, 37, 38]), []);
 
   const moodOptions = [
     { value: 'Bored', label: 'Bored', icon: '😐' },
@@ -50,13 +50,24 @@ const Seat = () => {
     { value: 'Pleased', label: 'Pleased', icon: '🙂' },
   ];
 
+  // Load user info (including role)
   useEffect(() => {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (currentUser) {
-      // ✅ Include role so we can detect admin users
-      setUserInfo({ id: currentUser.id, name: currentUser.name, role: currentUser.role });
+    const currentUserStr = localStorage.getItem('currentUser');
+    if (currentUserStr) {
+      try {
+        const currentUser = JSON.parse(currentUserStr);
+        setUserInfo({
+          id: currentUser.id,
+          name: currentUser.name || currentUser.email || '',
+          role: currentUser.role || ''
+        });
+      } catch (e) {
+        console.error('Failed to parse currentUser from localStorage', e);
+      }
     }
   }, []);
+
+  const isAdmin = userInfo.role === 'admin';
 
   const getRoomIdentifier = useCallback(() => {
     switch (location) {
@@ -91,9 +102,11 @@ const Seat = () => {
     setClassroomRoom('');
   }, [classroomBuilding, classroomFloor]);
 
+  // Reset selection when key filters change
   useEffect(() => {
     setSelectedSeats([]);
     setBookedSeats({});
+    setMaintenanceSeats({}); // NEW: reset maintenance mapping
     setRecommendedSeat(null);
     setErrorMsg('');
   }, [location, classroomBuilding, classroomFloor, classroomRoom, selectedDate, selectedHour]);
@@ -121,6 +134,7 @@ const Seat = () => {
     return validRooms.map(room => `${classroomBuilding}${classroomFloor}-${room}`);
   };
 
+  // Fetch booked + maintenance seats
   const fetchBookedSeats = useCallback(async () => {
     const room = getRoomIdentifier();
     if (!room || !selectedDate || !selectedHour || !endTime) return;
@@ -135,21 +149,25 @@ const Seat = () => {
         }
       });
 
-      // ✅ Now store seat status: "booked" or "maintenance"
       const booked = {};
+      const maintenance = {};
+
+      // Expect: each item has seat_number, status
       response.data.forEach(item => {
-        // If backend sends status = 3 → treat as maintenance, else normal booked
         if (item.status === 3) {
-          booked[item.seat_number] = 'maintenance';
+          maintenance[item.seat_number] = true;
         } else {
-          booked[item.seat_number] = 'booked';
+          booked[item.seat_number] = true;
         }
       });
+
       setBookedSeats(booked);
+      setMaintenanceSeats(maintenance);
     } catch (error) {
       console.error('Error fetching booked seats:', error);
       setBookedSeats({});
-      setErrorMsg('fail');
+      setMaintenanceSeats({});
+      setErrorMsg('Failed to load seat status');
     } finally {
       setLoading(false);
     }
@@ -176,8 +194,9 @@ const Seat = () => {
   }, [selectedDate, selectedHour, getRoomIdentifier, fetchBookedSeats]);
 
   const toggleSeat = (seatNumber) => {
-    // ✅ Block both booked and maintenance seats
-    if (bookedSeats[seatNumber]) return;
+    // block clicking booked or maintenance seats
+    if (bookedSeats[seatNumber] || maintenanceSeats[seatNumber]) return;
+
     setSelectedSeats(prev =>
       prev.includes(seatNumber)
         ? prev.filter(num => num !== seatNumber)
@@ -190,10 +209,6 @@ const Seat = () => {
     const start_time = `${selectedHour}:00`;
     const end_time = `${endTime}:00`;
     const room = getRoomIdentifier();
-
-    // ✅ status 1 = normal booking, 3 = under maintenance (admin)
-    const bookingStatus = isAdmin ? 3 : 1;
-
     try {
       for (const seat_number of selectedSeats) {
         await axios.post('/api/bookings', {
@@ -204,10 +219,10 @@ const Seat = () => {
           date: selectedDate,
           start_time,
           end_time,
-          status: bookingStatus
+          status: 1 // normal booking
         });
       }
-      alert(isAdmin ? 'Seat(s) set as under maintenance!' : 'Booking successful!');
+      alert('Booking successful!');
       setSelectedSeats([]);
       fetchBookedSeats();
     } catch (error) {
@@ -216,9 +231,38 @@ const Seat = () => {
     }
   };
 
+  // NEW: admin sets seats as maintenance (status = 3)
+  const handleSetMaintenance = async () => {
+    if (!isAdmin) return;
+    if (selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier()) return;
+    const start_time = `${selectedHour}:00`;
+    const end_time = `${endTime}:00`;
+    const room = getRoomIdentifier();
+    try {
+      for (const seat_number of selectedSeats) {
+        await axios.post('/api/bookings', {
+          book_id: userInfo.id,
+          book_name: userInfo.name,
+          room,
+          seat_number,
+          date: selectedDate,
+          start_time,
+          end_time,
+          status: 3 // under maintenance
+        });
+      }
+      alert('Seat(s) set as under maintenance!');
+      setSelectedSeats([]);
+      fetchBookedSeats();
+    } catch (error) {
+      console.error('Set maintenance error:', error);
+      alert('Failed to set maintenance: ' + (error.response?.data?.message || 'Unknown error'));
+    }
+  };
+
   const handleGetRecommendation = async () => {
     if (!selectedMood || !getRoomIdentifier() || !selectedHour || !selectedDate) {
-      setErrorMsg('fill first');
+      setErrorMsg('Please fill in location, time, date and mood first');
       return;
     }
     setLoading(true);
@@ -226,15 +270,18 @@ const Seat = () => {
     try {
       const room = getRoomIdentifier();
       const time_slot = `${selectedHour}:00`;
-      const booked_seats = Object.keys(bookedSeats).join(',');
-      
+
+      // Block both booked and maintenance seats from recommendation
+      const allBlockedSeats = { ...bookedSeats, ...maintenanceSeats };
+      const booked_seats = Object.keys(allBlockedSeats).join(',');
+
       const response = await axios.post('/api/recommend/seat', {
         room_id: room,
         time_slot: time_slot,
         booked_seats: booked_seats,
         user_mood: selectedMood
       });
-      
+
       if (response.data.seat_number) {
         setRecommendedSeat(response.data.seat_number);
         setShowMoodModal(false);
@@ -245,11 +292,11 @@ const Seat = () => {
           });
         }
       } else {
-        setErrorMsg('fail');
+        setErrorMsg('Failed to get seat recommendation');
       }
     } catch (error) {
       console.error('Error getting recommendation:', error);
-      const errMsg = error.response?.data?.msg || 'fail';
+      const errMsg = error.response?.data?.msg || 'Failed to get recommendation';
       setErrorMsg(errMsg);
       alert(`fail: ${errMsg}`);
     } finally {
@@ -264,7 +311,7 @@ const Seat = () => {
     const seatsPerTable = isMobile ? 2 : 3;
     const seatSize = isMobile ? 25 : 30;
     const seatMargin = isMobile ? 3 : 8;
-    
+
     return (
       <div className="canteen-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
         {[...Array(columns)].map((_, colIndex) => (
@@ -275,14 +322,12 @@ const Seat = () => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2;
                     const seatNum = baseNum + seatIndex + 1;
-                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -294,14 +339,12 @@ const Seat = () => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2 + seatsPerTable;
                     const seatNum = baseNum + seatIndex + 1;
-                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -324,7 +367,7 @@ const Seat = () => {
     const seatsPerTable = isMobile ? 3 : 4;
     const seatSize = isMobile ? 25 : 30;
     const seatMargin = isMobile ? 3 : 8;
-    
+
     return (
       <div className="library-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
         {[...Array(columns)].map((_, colIndex) => (
@@ -335,14 +378,12 @@ const Seat = () => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2;
                     const seatNum = baseNum + seatIndex + 1;
-                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -354,14 +395,12 @@ const Seat = () => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2 + seatsPerTable;
                     const seatNum = baseNum + seatIndex + 1;
-                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -383,79 +422,63 @@ const Seat = () => {
     const is01To07 = roomNum && parseInt(roomNum, 10) >= 1 && parseInt(roomNum, 10) <= 7;
     const seatSize = isMobile ? 25 : 30;
     const seatMargin = isMobile ? 3 : 8;
-    
+
     return (
       <div className={`classroom-type1 ${is01To07 ? 'classroom-01-07' : ''}`} style={{ width: isMobile ? 'auto' : (is01To07 ? 1200 : 1000), minWidth: isMobile ? '600px' : 'auto' }}>
         <div className="left-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
           <div className="table-seats top-seats">
-            {[1, 2, 3].map(seatNum => {
-              const seatStatus = bookedSeats[seatNum];
-              return (
-                <div 
-                  key={seatNum}
-                  data-seat={seatNum}
-                  className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                  onClick={() => toggleSeat(seatNum)}
-                  disabled={!!seatStatus}
-                  style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
+            {[1, 2, 3].map(seatNum => (
+              <div 
+                key={seatNum}
+                data-seat={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                onClick={() => toggleSeat(seatNum)}
+                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+              >
+                {seatNum}
+              </div>
+            ))}
           </div>
           <div className="table-seats bottom-seats">
-            {[4, 5, 6].map(seatNum => {
-              const seatStatus = bookedSeats[seatNum];
-              return (
-                <div 
-                  key={seatNum}
-                  data-seat={seatNum}
-                  className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                  onClick={() => toggleSeat(seatNum)}
-                  disabled={!!seatStatus}
-                  style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
+            {[4, 5, 6].map(seatNum => (
+              <div 
+                key={seatNum}
+                data-seat={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                onClick={() => toggleSeat(seatNum)}
+                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+              >
+                {seatNum}
+              </div>
+            ))}
           </div>
         </div>
         <div className="right-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
           <div className="table-seats top-seats">
-            {[7, 8, 9].map(seatNum => {
-              const seatStatus = bookedSeats[seatNum];
-              return (
-                <div 
-                  key={seatNum}
-                  data-seat={seatNum}
-                  className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                  onClick={() => toggleSeat(seatNum)}
-                  disabled={!!seatStatus}
-                  style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
+            {[7, 8, 9].map(seatNum => (
+              <div 
+                key={seatNum}
+                data-seat={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                onClick={() => toggleSeat(seatNum)}
+                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+              >
+                {seatNum}
+              </div>
+            ))}
           </div>
           <div className="table-seats bottom-seats">
-            {[10, 11, 12].map(seatNum => {
-              const seatStatus = bookedSeats[seatNum];
-              return (
-                <div 
-                  key={seatNum}
-                  data-seat={seatNum}
-                  className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                  onClick={() => toggleSeat(seatNum)}
-                  disabled={!!seatStatus}
-                  style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                >
-                  {seatNum}
-                </div>
-              );
-            })}
+            {[10, 11, 12].map(seatNum => (
+              <div 
+                key={seatNum}
+                data-seat={seatNum}
+                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                onClick={() => toggleSeat(seatNum)}
+                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+              >
+                {seatNum}
+              </div>
+            ))}
           </div>
         </div>
         <div className="front-wall-tables">
@@ -464,74 +487,58 @@ const Seat = () => {
               {!is01To07 && (
                 <>
                   <div className="table-seats top-seats">
-                    {[13 + (tableNum - 1) * 12, 14 + (tableNum - 1) * 12, 15 + (tableNum - 1) * 12].map(seatNum => {
-                      const seatStatus = bookedSeats[seatNum];
-                      return (
-                        <div 
-                          key={seatNum}
-                          data-seat={seatNum}
-                          className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                          onClick={() => toggleSeat(seatNum)}
-                          disabled={!!seatStatus}
-                          style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                        >
-                          {seatNum}
-                        </div>
-                      );
-                    })}
+                    {[13 + (tableNum - 1) * 12, 14 + (tableNum - 1) * 12, 15 + (tableNum - 1) * 12].map(seatNum => (
+                      <div 
+                        key={seatNum}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                      >
+                        {seatNum}
+                      </div>
+                    ))}
                   </div>
                   <div className="table-seats bottom-seats">
-                    {[16 + (tableNum - 1) * 12, 17 + (tableNum - 1) * 12, 18 + (tableNum - 1) * 12].map(seatNum => {
-                      const seatStatus = bookedSeats[seatNum];
-                      return (
-                        <div 
-                          key={seatNum}
-                          data-seat={seatNum}
-                          className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                          onClick={() => toggleSeat(seatNum)}
-                          disabled={!!seatStatus}
-                          style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                        >
-                          {seatNum}
-                        </div>
-                      );
-                    })}
+                    {[16 + (tableNum - 1) * 12, 17 + (tableNum - 1) * 12, 18 + (tableNum - 1) * 12].map(seatNum => (
+                      <div 
+                        key={seatNum}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                      >
+                        {seatNum}
+                      </div>
+                    ))}
                   </div>
                 </>
               )}
               <div className="table-seats left-seats">
-                {[19 + (tableNum - 1) * 12, 20 + (tableNum - 1) * 12, 21 + (tableNum - 1) * 12].map(seatNum => {
-                  const seatStatus = bookedSeats[seatNum];
-                  return (
-                    <div 
-                      key={seatNum}
-                      data-seat={seatNum}
-                      className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                      onClick={() => toggleSeat(seatNum)}
-                      disabled={!!seatStatus}
-                      style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
-                    >
-                      {seatNum}
-                    </div>
-                  );
-                })}
+                {[19 + (tableNum - 1) * 12, 20 + (tableNum - 1) * 12, 21 + (tableNum - 1) * 12].map(seatNum => (
+                  <div 
+                    key={seatNum}
+                    data-seat={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                    onClick={() => toggleSeat(seatNum)}
+                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
+                  >
+                    {seatNum}
+                  </div>
+                ))}
               </div>
               <div className="table-seats right-seats">
-                {[22 + (tableNum - 1) * 12, 23 + (tableNum - 1) * 12, 24 + (tableNum - 1) * 12].map(seatNum => {
-                  const seatStatus = bookedSeats[seatNum];
-                  return (
-                    <div 
-                      key={seatNum}
-                      data-seat={seatNum}
-                      className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                      onClick={() => toggleSeat(seatNum)}
-                      disabled={!!seatStatus}
-                      style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
-                    >
-                      {seatNum}
-                    </div>
-                  );
-                })}
+                {[22 + (tableNum - 1) * 12, 23 + (tableNum - 1) * 12, 24 + (tableNum - 1) * 12].map(seatNum => (
+                  <div 
+                    key={seatNum}
+                    data-seat={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                    onClick={() => toggleSeat(seatNum)}
+                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
+                  >
+                    {seatNum}
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -542,74 +549,58 @@ const Seat = () => {
               {!is01To07 && (
                 <>
                   <div className="table-seats top-seats">
-                    {[49 + (tableNum - 1) * 12, 50 + (tableNum - 1) * 12, 51 + (tableNum - 1) * 12].map(seatNum => {
-                      const seatStatus = bookedSeats[seatNum];
-                      return (
-                        <div 
-                          key={seatNum}
-                          data-seat={seatNum}
-                          className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                          onClick={() => toggleSeat(seatNum)}
-                          disabled={!!seatStatus}
-                          style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                        >
-                          {seatNum}
-                        </div>
-                      );
-                    })}
+                    {[49 + (tableNum - 1) * 12, 50 + (tableNum - 1) * 12, 51 + (tableNum - 1) * 12].map(seatNum => (
+                      <div 
+                        key={seatNum}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                      >
+                        {seatNum}
+                      </div>
+                    ))}
                   </div>
                   <div className="table-seats bottom-seats">
-                    {[52 + (tableNum - 1) * 12, 53 + (tableNum - 1) * 12, 54 + (tableNum - 1) * 12].map(seatNum => {
-                      const seatStatus = bookedSeats[seatNum];
-                      return (
-                        <div 
-                          key={seatNum}
-                          data-seat={seatNum}
-                          className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                          onClick={() => toggleSeat(seatNum)}
-                          disabled={!!seatStatus}
-                          style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                        >
-                          {seatNum}
-                        </div>
-                      );
-                    })}
+                    {[52 + (tableNum - 1) * 12, 53 + (tableNum - 1) * 12, 54 + (tableNum - 1) * 12].map(seatNum => (
+                      <div 
+                        key={seatNum}
+                        data-seat={seatNum}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        onClick={() => toggleSeat(seatNum)}
+                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                      >
+                        {seatNum}
+                      </div>
+                    ))}
                   </div>
                 </>
               )}
               <div className="table-seats left-seats">
-                {[55 + (tableNum - 1) * 12, 56 + (tableNum - 1) * 12, 57 + (tableNum - 1) * 12].map(seatNum => {
-                  const seatStatus = bookedSeats[seatNum];
-                  return (
-                    <div 
-                      key={seatNum}
-                      data-seat={seatNum}
-                      className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                      onClick={() => toggleSeat(seatNum)}
-                      disabled={!!seatStatus}
-                      style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
-                    >
-                      {seatNum}
-                    </div>
-                  );
-                })}
+                {[55 + (tableNum - 1) * 12, 56 + (tableNum - 1) * 12, 57 + (tableNum - 1) * 12].map(seatNum => (
+                  <div 
+                    key={seatNum}
+                    data-seat={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                    onClick={() => toggleSeat(seatNum)}
+                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
+                  >
+                    {seatNum}
+                  </div>
+                ))}
               </div>
               <div className="table-seats right-seats">
-                {[58 + (tableNum - 1) * 12, 59 + (tableNum - 1) * 12, 60 + (tableNum - 1) * 12].map(seatNum => {
-                  const seatStatus = bookedSeats[seatNum];
-                  return (
-                    <div 
-                      key={seatNum}
-                      data-seat={seatNum}
-                      className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                      onClick={() => toggleSeat(seatNum)}
-                      disabled={!!seatStatus}
-                      style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
-                    >
-                      {seatNum}
-                    </div>
-                  );
-                })}
+                {[58 + (tableNum - 1) * 12, 59 + (tableNum - 1) * 12, 60 + (tableNum - 1) * 12].map(seatNum => (
+                  <div 
+                    key={seatNum}
+                    data-seat={seatNum}
+                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                    onClick={() => toggleSeat(seatNum)}
+                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
+                  >
+                    {seatNum}
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -625,7 +616,7 @@ const Seat = () => {
     const totalSeatsPerRow = seatsPerSide * 2;
     const seatSize = isMobile ? 25 : 30;
     const seatMargin = isMobile ? 2 : 0;
-    
+
     return (
       <div className="classroom-type2" style={{ width: isMobile ? 'auto' : 900, minWidth: isMobile ? '500px' : 'auto' }}>
         <div className="staircase-area"></div>
@@ -643,14 +634,12 @@ const Seat = () => {
                 <div className="seat-group left-group">
                   {[...Array(seatsPerSide)].map((_, seatIndex) => {
                     const seatNum = rowBaseNum + seatIndex + 1;
-                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
                       >
                         {seatNum}
@@ -661,14 +650,12 @@ const Seat = () => {
                 <div className="seat-group right-group">
                   {[...Array(seatsPerSide)].map((_, seatIndex) => {
                     const seatNum = rowBaseNum + seatsPerSide + seatIndex + 1;
-                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${maintenanceSeats[seatNum] ? 'maintenance' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
                       >
                         {seatNum}
@@ -736,7 +723,7 @@ const Seat = () => {
       )}
       <button
         className="booking-button"
-        onClick={handleBooking}
+        onClick={isAdmin ? handleSetMaintenance : handleBooking}
         disabled={selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier() || loading}
       >
         {isAdmin ? 'Set as Under Maintenance' : 'Confirm Booking'}
@@ -814,9 +801,8 @@ const Seat = () => {
           background-color: #ef4444;
           cursor: not-allowed;
         }
-        /* ✅ Maintenance seat color */
         .seat.maintenance {
-          background-color: #f97316;
+          background-color: #f97316; /* orange for maintenance */
           cursor: not-allowed;
         }
         .seat.recommended {
@@ -1140,28 +1126,26 @@ const Seat = () => {
           display: none;
         }
 
-        /* ✅ Seat legend */
+        /* Seat legend */
         .seat-legend {
           margin-top: 1.5rem;
           display: flex;
           flex-wrap: wrap;
           gap: 0.75rem 1.5rem;
-          font-size: 0.9rem;
-          color: #475569;
+          align-items: center;
         }
         .legend-item {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.4rem;
+          font-size: 0.85rem;
+          color: #475569;
         }
         .legend-dot {
-          width: 14px;
-          height: 14px;
-          border-radius: 999px;
-          border: 1px solid #cbd5e1;
-        }
-        .legend-dot.available {
-          background-color: #e2e8f0;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background-color: #94a3b8;
         }
         .legend-dot.selected {
           background-color: #1e40af;
@@ -1173,8 +1157,8 @@ const Seat = () => {
           background-color: #f97316;
         }
         .legend-dot.recommended {
+          border: 2px solid #10b981;
           background-color: #dcfce7;
-          border-color: #16a34a;
         }
 
         /* Mood Modal Styles */
@@ -1398,7 +1382,11 @@ const Seat = () => {
       </style>
       {selectedSeats.length > 0 && (
         <div className="seat-notification">
-          <p>You have selected {selectedSeats.length} seat(s). Please confirm your reservation.</p>
+          <p>
+            {isAdmin
+              ? `You have selected ${selectedSeats.length} seat(s). Click "Set as Under Maintenance" to mark them.`
+              : `You have selected ${selectedSeats.length} seat(s). Please confirm your reservation.`}
+          </p>
         </div>
       )}
       <div className="seat-container">
@@ -1585,10 +1573,10 @@ const Seat = () => {
               {renderSeatMap()}
             </div>
 
-            {/* ✅ Color legend area */}
+            {/* Legend explaining colors */}
             <div className="seat-legend">
               <div className="legend-item">
-                <span className="legend-dot available"></span>
+                <span className="legend-dot"></span>
                 <span>Available</span>
               </div>
               <div className="legend-item">
@@ -1605,7 +1593,7 @@ const Seat = () => {
               </div>
               <div className="legend-item">
                 <span className="legend-dot recommended"></span>
-                <span>Recommended</span>
+                <span>AI Recommended</span>
               </div>
             </div>
 
