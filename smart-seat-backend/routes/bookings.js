@@ -11,6 +11,8 @@ router.put('/:id', bookingController.updatebooking);
 router.patch('/:id', bookingController.updatebooking);
 router.delete('/:id', bookingController.deletebooking);
 router.put('/:id/cancel', bookingController.cancelBooking);
+router.post('/update-by-detection', bookingController.updateSeatStatusByDetection);
+
 
 module.exports = router;
     

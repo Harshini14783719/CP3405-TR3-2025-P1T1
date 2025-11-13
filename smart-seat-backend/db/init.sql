@@ -36,3 +36,6 @@ VALUES ('test@jcu.edu.au', '$2a$10$EixZaYb051a2U6k8G9Kz2e8G9H0i1J2K3L4M5N6O7P8Q9
 
 INSERT INTO bookings (room, seat_number, date, start_time, end_time, book_name, book_id, status)
 VALUES ('library-1', 5, CURDATE(), '14:00:00', '16:00:00', 'Test User', 1, 0);
+
+INSERT INTO users (id, email, password, role, name, jcu_id)
+VALUES (99999999, 'system@smartseat.local', '', 'system', 'System', '00000000');

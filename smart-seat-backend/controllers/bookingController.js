@@ -207,3 +207,62 @@ exports.updateExpiredBookings = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
+const getChinaTime = () => {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const chinaTime = new Date(utc + 8 * 3600000);
+  return chinaTime;
+};
+
+exports.updateSeatStatusByDetection = async (room, seat_number) => {
+  const now = getChinaTime();
+  const date = now.toISOString().slice(0,10);
+  const hour = now.getHours();
+  const start_time = hour.toString().padStart(2,'0') + ':00';
+  const end_time = (hour + 1).toString().padStart(2,'0') + ':00';
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [existing] = await connection.execute(
+      `SELECT * FROM bookings WHERE room=? AND seat_number=? AND date=? AND start_time=?`,
+      [room, seat_number, date, start_time]
+    );
+    if (existing.length === 0) {
+      await connection.execute(
+        `INSERT INTO bookings (room, seat_number, date, start_time, end_time, book_name, book_id, status)
+         VALUES (?,?,?,?,?,?,?,?)`,
+        [room, seat_number, date, start_time, end_time, 'system', 99999999, 1]
+      );
+    }
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+exports.deleteDefaultBookingIfExists = async (room, seat_number) => {
+  const now = getChinaTime();
+  const date = now.toISOString().slice(0,10);
+  const hour = now.getHours();
+  const start_time = hour.toString().padStart(2,'0') + ':00';
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [existing] = await connection.execute(
+      `SELECT * FROM bookings WHERE room=? AND seat_number=? AND date=? AND start_time=? AND book_name='system' AND book_id=99999999`,
+      [room, seat_number, date, start_time]
+    );
+    if (existing.length > 0) {
+      await connection.execute(
+        `DELETE FROM bookings WHERE room=? AND seat_number=? AND date=? AND start_time=? AND book_name='system' AND book_id=99999999`,
+        [room, seat_number, date, start_time]
+      );
+    }
+  } catch (err) {
+    console.error(err);
+  } finally {
+    if (connection) connection.release();
+  }
+};
