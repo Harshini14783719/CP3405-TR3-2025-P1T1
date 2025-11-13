@@ -312,6 +312,39 @@ useEffect(() => {
     
     return (
       <div className="canteen-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
+        {/* Two doors and 4 evenly spaced vertical windows */}
+
+        {/* Two doors positioned below the last tables */}
+          <div
+            className="door"
+            style={{
+              bottom: '10px',
+              left: '160px',
+              transform: 'translateY(100%)',
+            }}
+          >
+            🚪 Door
+          </div>
+
+          <div
+            className="door"
+            style={{
+              bottom: '10px',
+              right: '160px',
+              transform: 'translateY(100%)',
+            }}
+          >
+            🚪 Door
+          </div>
+
+        {/* Left-side windows */}
+        <div className="window vertical-window" style={{ top: '80px', left: '20px', height: '100px' }}>🪟</div>
+        <div className="window vertical-window" style={{ bottom: '140px', left: '20px', height: '100px' }}>🪟</div>
+
+        {/* Right-side windows */}
+        <div className="window vertical-window" style={{ top: '80px', right: '20px', height: '100px' }}>🪟</div>
+        <div className="window vertical-window" style={{ bottom: '140px', right: '20px', height: '100px' }}>🪟</div>
+
         {[...Array(columns)].map((_, colIndex) => (
           <div key={`col-${colIndex + 1}`} className="canteen-column">
             {[...Array(tablesPerColumn)].map((_, tableIndex) => (
@@ -1051,10 +1084,11 @@ useEffect(() => {
   gap: 15px;
 }
 .canteen-layout {
-  display: flex;
-  width: 100%;
-  justify-content: space-around;
+  position: relative;
+  min-height: 700px;
   padding: 20px;
+  display: flex;
+  justify-content: space-around;
 }
 .canteen-column {
   display: flex;
