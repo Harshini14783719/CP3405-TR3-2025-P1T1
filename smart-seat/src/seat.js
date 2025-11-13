@@ -599,6 +599,11 @@ useEffect(() => {
     
     return (
       <div className="classroom-type2" style={{ width: isMobile ? 'auto' : 900, minWidth: isMobile ? '500px' : 'auto' }}>
+        {/* Door and windows */}
+        <div className="door" style={{ top: '10px', left: '50%', transform: 'translateX(-50%)' }}>🚪 Door</div>
+        <div className="window" style={{ top: '50%', left: '20px' }}>🪟 Window</div>
+        <div className="window" style={{ top: '50%', right: '20px' }}>🪟 Window</div>
+
         <div className="staircase-area"></div>
         <div className="classroom-type2-rows">
           {[...Array(rows)].map((_, rowIndex) => {
