@@ -45,18 +45,30 @@ const SignIn = () => {
       if (data.success) {
         localStorage.setItem('isLoggedIn', 'true');
         if (rememberMe) localStorage.setItem('savedEmail', email);
-        
+
+        let userData = null;
+
         try {
           const userResponse = await fetch('/api/users/me', {
             headers: { 'user-id': data.user.id }
           });
-          const userData = await userResponse.json();
+          userData = await userResponse.json();
           localStorage.setItem('currentUser', JSON.stringify(userData));
         } catch (err) {
           console.error('Failed to fetch full user info:', err);
+          userData = data.user;
           localStorage.setItem('currentUser', JSON.stringify(data.user));
         }
-        
+
+        // ⭐ ADDED: Admin must have ID starting with 19
+        if (userData.role === "admin") {
+          if (!userData.jcu_id || !userData.jcu_id.startsWith("19")) {
+            alert("Admin login denied. Admin ID must start with '19'.");
+            return;
+          }
+        }
+
+        // ⭐ NO CHANGE BELOW — ORIGINAL REDIRECT LOGIC
         if (data.user.profileCompleted) {
           navigate('/home', { replace: true });
         } else {
@@ -198,7 +210,6 @@ const SignIn = () => {
       }
     };
 
-    // Tablet styles (768px to 1024px)
     if (window.innerWidth <= 1024 && window.innerWidth > 768) {
       return {
         ...baseStyles,
@@ -223,7 +234,6 @@ const SignIn = () => {
       };
     }
 
-    // Mobile styles (<= 768px)
     if (window.innerWidth <= 768) {
       return {
         ...baseStyles,
@@ -282,7 +292,6 @@ const SignIn = () => {
     const handleResize = () => {
       setStyles(getStyles());
     };
-
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);

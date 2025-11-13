@@ -22,9 +22,12 @@ const Seat = () => {
   const [recommendedSeat, setRecommendedSeat] = useState(null);
   const [selectedMood, setSelectedMood] = useState('');
   const [scrollY, setScrollY] = useState(0);
-  const [userInfo, setUserInfo] = useState({ id: '', name: '' });
+  const [userInfo, setUserInfo] = useState({ id: '', name: '', role: '' });
   const [errorMsg, setErrorMsg] = useState('');
   const popularSeats = useMemo(() => new Set([4, 6, 13, 16, 37, 38]), []);
+
+  // ✅ Is this user an admin?
+  const isAdmin = userInfo.role === 'admin';
 
   const moodOptions = [
     { value: 'Bored', label: 'Bored', icon: '😐' },
@@ -50,7 +53,8 @@ const Seat = () => {
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     if (currentUser) {
-      setUserInfo({ id: currentUser.id, name: currentUser.name });
+      // ✅ Include role so we can detect admin users
+      setUserInfo({ id: currentUser.id, name: currentUser.name, role: currentUser.role });
     }
   }, []);
 
@@ -130,9 +134,16 @@ const Seat = () => {
           end_time: `${endTime}:00`
         }
       });
+
+      // ✅ Now store seat status: "booked" or "maintenance"
       const booked = {};
       response.data.forEach(item => {
-        booked[item.seat_number] = true;
+        // If backend sends status = 3 → treat as maintenance, else normal booked
+        if (item.status === 3) {
+          booked[item.seat_number] = 'maintenance';
+        } else {
+          booked[item.seat_number] = 'booked';
+        }
       });
       setBookedSeats(booked);
     } catch (error) {
@@ -165,6 +176,7 @@ const Seat = () => {
   }, [selectedDate, selectedHour, getRoomIdentifier, fetchBookedSeats]);
 
   const toggleSeat = (seatNumber) => {
+    // ✅ Block both booked and maintenance seats
     if (bookedSeats[seatNumber]) return;
     setSelectedSeats(prev =>
       prev.includes(seatNumber)
@@ -178,6 +190,10 @@ const Seat = () => {
     const start_time = `${selectedHour}:00`;
     const end_time = `${endTime}:00`;
     const room = getRoomIdentifier();
+
+    // ✅ status 1 = normal booking, 3 = under maintenance (admin)
+    const bookingStatus = isAdmin ? 3 : 1;
+
     try {
       for (const seat_number of selectedSeats) {
         await axios.post('/api/bookings', {
@@ -188,10 +204,10 @@ const Seat = () => {
           date: selectedDate,
           start_time,
           end_time,
-          status: 1
+          status: bookingStatus
         });
       }
-      alert('Booking successful!');
+      alert(isAdmin ? 'Seat(s) set as under maintenance!' : 'Booking successful!');
       setSelectedSeats([]);
       fetchBookedSeats();
     } catch (error) {
@@ -259,13 +275,14 @@ const Seat = () => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2;
                     const seatNum = baseNum + seatIndex + 1;
+                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
+                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -277,13 +294,14 @@ const Seat = () => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2 + seatsPerTable;
                     const seatNum = baseNum + seatIndex + 1;
+                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
+                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -317,13 +335,14 @@ const Seat = () => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2;
                     const seatNum = baseNum + seatIndex + 1;
+                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
+                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -335,13 +354,14 @@ const Seat = () => {
                   {[...Array(seatsPerTable)].map((_, seatIndex) => {
                     const baseNum = (colIndex * tablesPerColumn + tableIndex) * seatsPerTable * 2 + seatsPerTable;
                     const seatNum = baseNum + seatIndex + 1;
+                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
+                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
                       >
                         {seatNum}
@@ -368,62 +388,74 @@ const Seat = () => {
       <div className={`classroom-type1 ${is01To07 ? 'classroom-01-07' : ''}`} style={{ width: isMobile ? 'auto' : (is01To07 ? 1200 : 1000), minWidth: isMobile ? '600px' : 'auto' }}>
         <div className="left-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
           <div className="table-seats top-seats">
-            {[1, 2, 3].map(seatNum => (
-              <div 
-                key={seatNum}
-                data-seat={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                onClick={() => toggleSeat(seatNum)}
-                disabled={bookedSeats[seatNum]}
-                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-              >
-                {seatNum}
-              </div>
-            ))}
+            {[1, 2, 3].map(seatNum => {
+              const seatStatus = bookedSeats[seatNum];
+              return (
+                <div 
+                  key={seatNum}
+                  data-seat={seatNum}
+                  className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                  onClick={() => toggleSeat(seatNum)}
+                  disabled={!!seatStatus}
+                  style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                >
+                  {seatNum}
+                </div>
+              );
+            })}
           </div>
           <div className="table-seats bottom-seats">
-            {[4, 5, 6].map(seatNum => (
-              <div 
-                key={seatNum}
-                data-seat={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                onClick={() => toggleSeat(seatNum)}
-                disabled={bookedSeats[seatNum]}
-                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-              >
-                {seatNum}
-              </div>
-            ))}
+            {[4, 5, 6].map(seatNum => {
+              const seatStatus = bookedSeats[seatNum];
+              return (
+                <div 
+                  key={seatNum}
+                  data-seat={seatNum}
+                  className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                  onClick={() => toggleSeat(seatNum)}
+                  disabled={!!seatStatus}
+                  style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                >
+                  {seatNum}
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="right-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
           <div className="table-seats top-seats">
-            {[7, 8, 9].map(seatNum => (
-              <div 
-                key={seatNum}
-                data-seat={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                onClick={() => toggleSeat(seatNum)}
-                disabled={bookedSeats[seatNum]}
-                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-              >
-                {seatNum}
-              </div>
-            ))}
+            {[7, 8, 9].map(seatNum => {
+              const seatStatus = bookedSeats[seatNum];
+              return (
+                <div 
+                  key={seatNum}
+                  data-seat={seatNum}
+                  className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                  onClick={() => toggleSeat(seatNum)}
+                  disabled={!!seatStatus}
+                  style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                >
+                  {seatNum}
+                </div>
+              );
+            })}
           </div>
           <div className="table-seats bottom-seats">
-            {[10, 11, 12].map(seatNum => (
-              <div 
-                key={seatNum}
-                data-seat={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                onClick={() => toggleSeat(seatNum)}
-                disabled={bookedSeats[seatNum]}
-                style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-              >
-                {seatNum}
-              </div>
-            ))}
+            {[10, 11, 12].map(seatNum => {
+              const seatStatus = bookedSeats[seatNum];
+              return (
+                <div 
+                  key={seatNum}
+                  data-seat={seatNum}
+                  className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                  onClick={() => toggleSeat(seatNum)}
+                  disabled={!!seatStatus}
+                  style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                >
+                  {seatNum}
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="front-wall-tables">
@@ -432,62 +464,74 @@ const Seat = () => {
               {!is01To07 && (
                 <>
                   <div className="table-seats top-seats">
-                    {[13 + (tableNum - 1) * 12, 14 + (tableNum - 1) * 12, 15 + (tableNum - 1) * 12].map(seatNum => (
-                      <div 
-                        key={seatNum}
-                        data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                        onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
-                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                      >
-                        {seatNum}
-                      </div>
-                    ))}
+                    {[13 + (tableNum - 1) * 12, 14 + (tableNum - 1) * 12, 15 + (tableNum - 1) * 12].map(seatNum => {
+                      const seatStatus = bookedSeats[seatNum];
+                      return (
+                        <div 
+                          key={seatNum}
+                          data-seat={seatNum}
+                          className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                          onClick={() => toggleSeat(seatNum)}
+                          disabled={!!seatStatus}
+                          style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                        >
+                          {seatNum}
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="table-seats bottom-seats">
-                    {[16 + (tableNum - 1) * 12, 17 + (tableNum - 1) * 12, 18 + (tableNum - 1) * 12].map(seatNum => (
-                      <div 
-                        key={seatNum}
-                        data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                        onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
-                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                      >
-                        {seatNum}
-                      </div>
-                    ))}
+                    {[16 + (tableNum - 1) * 12, 17 + (tableNum - 1) * 12, 18 + (tableNum - 1) * 12].map(seatNum => {
+                      const seatStatus = bookedSeats[seatNum];
+                      return (
+                        <div 
+                          key={seatNum}
+                          data-seat={seatNum}
+                          className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                          onClick={() => toggleSeat(seatNum)}
+                          disabled={!!seatStatus}
+                          style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                        >
+                          {seatNum}
+                        </div>
+                      );
+                    })}
                   </div>
                 </>
               )}
               <div className="table-seats left-seats">
-                {[19 + (tableNum - 1) * 12, 20 + (tableNum - 1) * 12, 21 + (tableNum - 1) * 12].map(seatNum => (
-                  <div 
-                    key={seatNum}
-                    data-seat={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                    onClick={() => toggleSeat(seatNum)}
-                    disabled={bookedSeats[seatNum]}
-                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
-                  >
-                    {seatNum}
-                  </div>
-                ))}
+                {[19 + (tableNum - 1) * 12, 20 + (tableNum - 1) * 12, 21 + (tableNum - 1) * 12].map(seatNum => {
+                  const seatStatus = bookedSeats[seatNum];
+                  return (
+                    <div 
+                      key={seatNum}
+                      data-seat={seatNum}
+                      className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                      onClick={() => toggleSeat(seatNum)}
+                      disabled={!!seatStatus}
+                      style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
+                    >
+                      {seatNum}
+                    </div>
+                  );
+                })}
               </div>
               <div className="table-seats right-seats">
-                {[22 + (tableNum - 1) * 12, 23 + (tableNum - 1) * 12, 24 + (tableNum - 1) * 12].map(seatNum => (
-                  <div 
-                    key={seatNum}
-                    data-seat={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                    onClick={() => toggleSeat(seatNum)}
-                    disabled={bookedSeats[seatNum]}
-                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
-                  >
-                    {seatNum}
-                  </div>
-                ))}
+                {[22 + (tableNum - 1) * 12, 23 + (tableNum - 1) * 12, 24 + (tableNum - 1) * 12].map(seatNum => {
+                  const seatStatus = bookedSeats[seatNum];
+                  return (
+                    <div 
+                      key={seatNum}
+                      data-seat={seatNum}
+                      className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                      onClick={() => toggleSeat(seatNum)}
+                      disabled={!!seatStatus}
+                      style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
+                    >
+                      {seatNum}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -498,62 +542,74 @@ const Seat = () => {
               {!is01To07 && (
                 <>
                   <div className="table-seats top-seats">
-                    {[49 + (tableNum - 1) * 12, 50 + (tableNum - 1) * 12, 51 + (tableNum - 1) * 12].map(seatNum => (
-                      <div 
-                        key={seatNum}
-                        data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                        onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
-                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                      >
-                        {seatNum}
-                      </div>
-                    ))}
+                    {[49 + (tableNum - 1) * 12, 50 + (tableNum - 1) * 12, 51 + (tableNum - 1) * 12].map(seatNum => {
+                      const seatStatus = bookedSeats[seatNum];
+                      return (
+                        <div 
+                          key={seatNum}
+                          data-seat={seatNum}
+                          className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                          onClick={() => toggleSeat(seatNum)}
+                          disabled={!!seatStatus}
+                          style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                        >
+                          {seatNum}
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="table-seats bottom-seats">
-                    {[52 + (tableNum - 1) * 12, 53 + (tableNum - 1) * 12, 54 + (tableNum - 1) * 12].map(seatNum => (
-                      <div 
-                        key={seatNum}
-                        data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                        onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
-                        style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
-                      >
-                        {seatNum}
-                      </div>
-                    ))}
+                    {[52 + (tableNum - 1) * 12, 53 + (tableNum - 1) * 12, 54 + (tableNum - 1) * 12].map(seatNum => {
+                      const seatStatus = bookedSeats[seatNum];
+                      return (
+                        <div 
+                          key={seatNum}
+                          data-seat={seatNum}
+                          className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                          onClick={() => toggleSeat(seatNum)}
+                          disabled={!!seatStatus}
+                          style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
+                        >
+                          {seatNum}
+                        </div>
+                      );
+                    })}
                   </div>
                 </>
               )}
               <div className="table-seats left-seats">
-                {[55 + (tableNum - 1) * 12, 56 + (tableNum - 1) * 12, 57 + (tableNum - 1) * 12].map(seatNum => (
-                  <div 
-                    key={seatNum}
-                    data-seat={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                    onClick={() => toggleSeat(seatNum)}
-                    disabled={bookedSeats[seatNum]}
-                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
-                  >
-                    {seatNum}
-                  </div>
-                ))}
+                {[55 + (tableNum - 1) * 12, 56 + (tableNum - 1) * 12, 57 + (tableNum - 1) * 12].map(seatNum => {
+                  const seatStatus = bookedSeats[seatNum];
+                  return (
+                    <div 
+                      key={seatNum}
+                      data-seat={seatNum}
+                      className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                      onClick={() => toggleSeat(seatNum)}
+                      disabled={!!seatStatus}
+                      style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
+                    >
+                      {seatNum}
+                    </div>
+                  );
+                })}
               </div>
               <div className="table-seats right-seats">
-                {[58 + (tableNum - 1) * 12, 59 + (tableNum - 1) * 12, 60 + (tableNum - 1) * 12].map(seatNum => (
-                  <div 
-                    key={seatNum}
-                    data-seat={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                    onClick={() => toggleSeat(seatNum)}
-                    disabled={bookedSeats[seatNum]}
-                    style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
-                  >
-                    {seatNum}
-                  </div>
-                ))}
+                {[58 + (tableNum - 1) * 12, 59 + (tableNum - 1) * 12, 60 + (tableNum - 1) * 12].map(seatNum => {
+                  const seatStatus = bookedSeats[seatNum];
+                  return (
+                    <div 
+                      key={seatNum}
+                      data-seat={seatNum}
+                      className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                      onClick={() => toggleSeat(seatNum)}
+                      disabled={!!seatStatus}
+                      style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
+                    >
+                      {seatNum}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -587,13 +643,14 @@ const Seat = () => {
                 <div className="seat-group left-group">
                   {[...Array(seatsPerSide)].map((_, seatIndex) => {
                     const seatNum = rowBaseNum + seatIndex + 1;
+                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
+                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
                       >
                         {seatNum}
@@ -604,13 +661,14 @@ const Seat = () => {
                 <div className="seat-group right-group">
                   {[...Array(seatsPerSide)].map((_, seatIndex) => {
                     const seatNum = rowBaseNum + seatsPerSide + seatIndex + 1;
+                    const seatStatus = bookedSeats[seatNum];
                     return (
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={`seat ${seatStatus === 'booked' ? 'booked' : ''} ${seatStatus === 'maintenance' ? 'maintenance' : ''} ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
                         onClick={() => toggleSeat(seatNum)}
-                        disabled={bookedSeats[seatNum]}
+                        disabled={!!seatStatus}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
                       >
                         {seatNum}
@@ -681,7 +739,7 @@ const Seat = () => {
         onClick={handleBooking}
         disabled={selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier() || loading}
       >
-        Confirm Booking
+        {isAdmin ? 'Set as Under Maintenance' : 'Confirm Booking'}
       </button>
     </div>
   );
@@ -697,603 +755,645 @@ const Seat = () => {
         }
         
         .seat-container {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  min-height: 100vh;
-  margin-top: 45px;
-}
-.seat-notification {
-  position: fixed;
-  top: 80px;
-  left: 0;
-  right: 0;
-  background-color: #e0f2fe;
-  color: #0284c7;
-  padding: 0.75rem 2.5rem;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  z-index: 101;
-  transition: all 0.3s ease;
-}
-.seat-sidebar {
-  width: 28%;
-  background-color: #ffffff;
-  padding: 2.5rem;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-}
-.seat-main {
-  width: 72%;
-  padding: 2.5rem;
-  background-color: #f8fafc;
-  overflow: auto;
-}
-.seat-sidebar h2 {
-  color: #0f172a;
-  margin-bottom: 2rem;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-.seat {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: #94a3b8;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin: 0 8px;
-  position: relative;
-}
-.seat.selected {
-  background-color: #1e40af;
-}
-.seat.booked {
-  background-color: #ef4444;
-  cursor: not-allowed;
-}
-.seat.recommended {
-  border: 3px solid #10b981;
-  animation: pulse 2s infinite;
-  background-color: #dcfce7;
-  color: #166534;
-}
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
-.form-group {
-  margin-bottom: 1.8rem;
-}
-.form-group label {
-  display: block;
-  margin-bottom: 0.7rem;
-  font-weight: 600;
-  color: #334155;
-  font-size: 0.95rem;
-}
-.form-control {
-  width: 100%;
-  padding: 0.85rem 1rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 1rem;
-  color: #1e293b;
-  background-color: #ffffff;
-  transition: all 0.2s ease;
-}
-.form-control:focus {
-  outline: none;
-  border-color: #1e40af;
-  box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.1);
-}
-.form-control:disabled {
-  background-color: #f1f5f9;
-  cursor: not-allowed;
-  opacity: 0.8;
-}
-.end-time-display {
-  margin-top: 0.5rem;
-  padding: 0.85rem 1rem;
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  color: #64748b;
-  font-size: 1rem;
-}
-.booking-button {
-  background-color: #1e40af;
-  color: white;
-  border: none;
-  padding: 0.85rem 1.5rem;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  width: 100%;
-  margin-top: 1rem;
-}
-.booking-button:disabled {
-  background-color: #94a3b8;
-  cursor: not-allowed;
-}
-.recommend-button {
-  background-color: #0ea5e9;
-  color: white;
-  border: none;
-  padding: 0.85rem 1.5rem;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width: 100%;
-  margin-top: 1rem;
-}
-.recommend-button:hover {
-  background-color: #0284c7;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-.selection-summary {
-  margin-top: 2.5rem;
-  padding-top: 1.8rem;
-  border-top: 1px solid #e2e8f0;
-}
-.selection-summary h3 {
-  margin-bottom: 1.2rem;
-  color: #0f172a;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-.selection-summary p {
-  margin-bottom: 0.6rem;
-  color: #334155;
-  font-size: 0.95rem;
-}
-.selection-summary .selected-seats {
-  margin-top: 1rem;
-  padding: 1rem;
-  background-color: #f1f5f9;
-  border-radius: 6px;
-}
-.selection-summary .selected-seats p {
-  margin-bottom: 0.3rem;
-}
-.seat-content h1 {
-  color: #0f172a;
-  margin-bottom: 2.2rem;
-  font-size: 2rem;
-  font-weight: 700;
-}
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: calc(100% - 5rem);
-  min-height: 500px;
-  background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  color: #64748b;
-  font-size: 1.1rem;
-  text-align: center;
-  padding: 2rem;
-}
-.location-view h2 {
-  color: #1e40af;
-  margin-bottom: 1.8rem;
-  font-size: 1.4rem;
-  font-weight: 600;
-}
-.seat-map-container {
-  background-color: #ffffff;
-  border-radius: 8px;
-  min-height: 600px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  padding: 2.5rem;
-  overflow-x: auto;
-  overflow-y: auto;
-}
-.seat-map {
-  min-height: 600px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.table {
-  background-color: #e2e8f0;
-  margin: 30px auto;
-  position: relative;
-  border-radius: 4px;
-}
-.horizontal-table {
-  width: 180px;
-  height: 60px;
-}
-.vertical-table {
-  width: 60px;
-  height: 180px;
-}
-.seat:hover:not(.booked) {
-  transform: scale(1.1);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-.table-seats {
-  display: flex;
-  justify-content: center;
-  position: absolute;
-}
-.top-seats {
-  top: -40px;
-  left: 0;
-  right: 0;
-}
-.bottom-seats {
-  bottom: -40px;
-  left: 0;
-  right: 0;
-}
-.left-seats {
-  top: 0;
-  bottom: 0;
-  left: -50px;
-  flex-direction: column;
-  justify-content: center;
-  gap: 15px;
-}
-.right-seats {
-  top: 0;
-  bottom: 0;
-  right: -50px;
-  flex-direction: column;
-  justify-content: center;
-  gap: 15px;
-}
-.canteen-layout {
-  display: flex;
-  width: 100%;
-  justify-content: space-around;
-  padding: 20px;
-}
-.canteen-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 40px;
-}
-.library-layout {
-  display: flex;
-  width: 100%;
-  justify-content: space-around;
-  padding: 20px;
-}
-.library-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 40px;
-}
-.classroom-type1 {
-  position: relative;
-  width: 1000px;
-  height: 700px;
-  border: 1px solid #e2e8f0;
-  padding: 60px;
-}
-.classroom-01-07 {
-  width: 1200px;
-}
-.classroom-01-07 .left-wall-table {
-  left: 0px;
-}
-.classroom-01-07 .right-wall-table {
-  right: 0px;
-}
-.classroom-01-07 .front-wall-tables,
-.classroom-01-07 .back-wall-tables {
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 20px;
-  width: 600px;
-  justify-content: center;
-}
-.left-wall-table {
-  position: absolute;
-  left: 60px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-.right-wall-table {
-  position: absolute;
-  right: 60px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-.front-wall-tables {
-  position: absolute;
-  top: 60px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 100px;
-}
-.back-wall-tables {
-  position: absolute;
-  bottom: 0px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 100px;
-}
-.classroom-type2 {
-  width: 900px;
-  padding: 0px;
-  position: relative;
-}
-.classroom-type2-rows {
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  z-index: 2;
-}
-.classroom-row {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  gap: 30px;
-}
-.seat-group {
-  display: flex;
-  gap: 0px;
-}
-.left-group, .right-group {
-  display: flex;
-  justify-content: center;
-}
-.staircase-area {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 40%;
-  background-color: #f1f5f9;
-  z-index: 1;
-}
-.staircase-row {
-  position: relative;
-  z-index: 2;
-}
-.mobile-summary {
-  display: none;
-}
+          display: flex;
+          flex-direction: row;
+          width: 100%;
+          min-height: 100vh;
+          margin-top: 45px;
+        }
+        .seat-notification {
+          position: fixed;
+          top: 80px;
+          left: 0;
+          right: 0;
+          background-color: #e0f2fe;
+          color: #0284c7;
+          padding: 0.75rem 2.5rem;
+          text-align: center;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          z-index: 101;
+          transition: all 0.3s ease;
+        }
+        .seat-sidebar {
+          width: 28%;
+          background-color: #ffffff;
+          padding: 2.5rem;
+          box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+        }
+        .seat-main {
+          width: 72%;
+          padding: 2.5rem;
+          background-color: #f8fafc;
+          overflow: auto;
+        }
+        .seat-sidebar h2 {
+          color: #0f172a;
+          margin-bottom: 2rem;
+          font-size: 1.5rem;
+          font-weight: 700;
+        }
+        .seat {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background-color: #94a3b8;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          margin: 0 8px;
+          position: relative;
+        }
+        .seat.selected {
+          background-color: #1e40af;
+        }
+        .seat.booked {
+          background-color: #ef4444;
+          cursor: not-allowed;
+        }
+        /* ✅ Maintenance seat color */
+        .seat.maintenance {
+          background-color: #f97316;
+          cursor: not-allowed;
+        }
+        .seat.recommended {
+          border: 3px solid #10b981;
+          animation: pulse 2s infinite;
+          background-color: #dcfce7;
+          color: #166534;
+        }
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+          70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        .form-group {
+          margin-bottom: 1.8rem;
+        }
+        .form-group label {
+          display: block;
+          margin-bottom: 0.7rem;
+          font-weight: 600;
+          color: #334155;
+          font-size: 0.95rem;
+        }
+        .form-control {
+          width: 100%;
+          padding: 0.85rem 1rem;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          font-size: 1rem;
+          color: #1e293b;
+          background-color: #ffffff;
+          transition: all 0.2s ease;
+        }
+        .form-control:focus {
+          outline: none;
+          border-color: #1e40af;
+          box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.1);
+        }
+        .form-control:disabled {
+          background-color: #f1f5f9;
+          cursor: not-allowed;
+          opacity: 0.8;
+        }
+        .end-time-display {
+          margin-top: 0.5rem;
+          padding: 0.85rem 1rem;
+          background-color: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          color: #64748b;
+          font-size: 1rem;
+        }
+        .booking-button {
+          background-color: #1e40af;
+          color: white;
+          border: none;
+          padding: 0.85rem 1.5rem;
+          border-radius: 6px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+          width: 100%;
+          margin-top: 1rem;
+        }
+        .booking-button:disabled {
+          background-color: #94a3b8;
+          cursor: not-allowed;
+        }
+        .recommend-button {
+          background-color: #0ea5e9;
+          color: white;
+          border: none;
+          padding: 0.85rem 1.5rem;
+          border-radius: 6px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          width: 100%;
+          margin-top: 1rem;
+        }
+        .recommend-button:hover {
+          background-color: #0284c7;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .selection-summary {
+          margin-top: 2.5rem;
+          padding-top: 1.8rem;
+          border-top: 1px solid #e2e8f0;
+        }
+        .selection-summary h3 {
+          margin-bottom: 1.2rem;
+          color: #0f172a;
+          font-size: 1.1rem;
+          font-weight: 600;
+        }
+        .selection-summary p {
+          margin-bottom: 0.6rem;
+          color: #334155;
+          font-size: 0.95rem;
+        }
+        .selection-summary .selected-seats {
+          margin-top: 1rem;
+          padding: 1rem;
+          background-color: #f1f5f9;
+          border-radius: 6px;
+        }
+        .selection-summary .selected-seats p {
+          margin-bottom: 0.3rem;
+        }
+        .seat-content h1 {
+          color: #0f172a;
+          margin-bottom: 2.2rem;
+          font-size: 2rem;
+          font-weight: 700;
+        }
+        .empty-state {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: calc(100% - 5rem);
+          min-height: 500px;
+          background-color: #ffffff;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          color: #64748b;
+          font-size: 1.1rem;
+          text-align: center;
+          padding: 2rem;
+        }
+        .location-view h2 {
+          color: #1e40af;
+          margin-bottom: 1.8rem;
+          font-size: 1.4rem;
+          font-weight: 600;
+        }
+        .seat-map-container {
+          background-color: #ffffff;
+          border-radius: 8px;
+          min-height: 600px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          padding: 2.5rem;
+          overflow-x: auto;
+          overflow-y: auto;
+        }
+        .seat-map {
+          min-height: 600px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .table {
+          background-color: #e2e8f0;
+          margin: 30px auto;
+          position: relative;
+          border-radius: 4px;
+        }
+        .horizontal-table {
+          width: 180px;
+          height: 60px;
+        }
+        .vertical-table {
+          width: 60px;
+          height: 180px;
+        }
+        .seat:hover:not(.booked):not(.maintenance) {
+          transform: scale(1.1);
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .table-seats {
+          display: flex;
+          justify-content: center;
+          position: absolute;
+        }
+        .top-seats {
+          top: -40px;
+          left: 0;
+          right: 0;
+        }
+        .bottom-seats {
+          bottom: -40px;
+          left: 0;
+          right: 0;
+        }
+        .left-seats {
+          top: 0;
+          bottom: 0;
+          left: -50px;
+          flex-direction: column;
+          justify-content: center;
+          gap: 15px;
+        }
+        .right-seats {
+          top: 0;
+          bottom: 0;
+          right: -50px;
+          flex-direction: column;
+          justify-content: center;
+          gap: 15px;
+        }
+        .canteen-layout {
+          display: flex;
+          width: 100%;
+          justify-content: space-around;
+          padding: 20px;
+        }
+        .canteen-column {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 40px;
+        }
+        .library-layout {
+          display: flex;
+          width: 100%;
+          justify-content: space-around;
+          padding: 20px;
+        }
+        .library-column {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 40px;
+        }
+        .classroom-type1 {
+          position: relative;
+          width: 1000px;
+          height: 700px;
+          border: 1px solid #e2e8f0;
+          padding: 60px;
+        }
+        .classroom-01-07 {
+          width: 1200px;
+        }
+        .classroom-01-07 .left-wall-table {
+          left: 0px;
+        }
+        .classroom-01-07 .right-wall-table {
+          right: 0px;
+        }
+        .classroom-01-07 .front-wall-tables,
+        .classroom-01-07 .back-wall-tables {
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 20px;
+          width: 600px;
+          justify-content: center;
+        }
+        .left-wall-table {
+          position: absolute;
+          left: 60px;
+          top: 50%;
+          transform: translateY(-50%);
+        }
+        .right-wall-table {
+          position: absolute;
+          right: 60px;
+          top: 50%;
+          transform: translateY(-50%);
+        }
+        .front-wall-tables {
+          position: absolute;
+          top: 60px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 100px;
+        }
+        .back-wall-tables {
+          position: absolute;
+          bottom: 0px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 100px;
+        }
+        .classroom-type2 {
+          width: 900px;
+          padding: 0px;
+          position: relative;
+        }
+        .classroom-type2-rows {
+          display: flex;
+          flex-direction: column-reverse;
+          align-items: center;
+          gap: 8px;
+          position: relative;
+          z-index: 2;
+        }
+        .classroom-row {
+          display: flex;
+          justify-content: space-between;
+          width: 100%;
+          gap: 30px;
+        }
+        .seat-group {
+          display: flex;
+          gap: 0px;
+        }
+        .left-group, .right-group {
+          display: flex;
+          justify-content: center;
+        }
+        .staircase-area {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 40%;
+          background-color: #f1f5f9;
+          z-index: 1;
+        }
+        .staircase-row {
+          position: relative;
+          z-index: 2;
+        }
+        .mobile-summary {
+          display: none;
+        }
 
-/* Mood Modal Styles */
-.mood-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-}
-.mood-modal-overlay.active {
-  opacity: 1;
-  visibility: visible;
-}
-.mood-modal {
-  background-color: white;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 600px;
-  padding: 2rem;
-  transform: translateY(20px);
-  transition: all 0.3s ease;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  max-height: 80vh;
-  overflow-y: auto;
-}
-.mood-modal-overlay.active .mood-modal {
-  transform: translateY(0);
-}
-.mood-modal h3 {
-  color: #0f172a;
-  margin-bottom: 1.5rem;
-  font-size: 1.4rem;
-  text-align: center;
-  font-weight: 700;
-}
-.mood-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.mood-option {
-  background-color: #f1f5f9;
-  border: 2px solid transparent;
-  border-radius: 8px;
-  padding: 1rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-.mood-option:hover {
-  background-color: #e2e8f0;
-  transform: translateY(-3px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-.mood-option.selected {
-  border-color: #1e40af;
-  background-color: #eff6ff;
-  box-shadow: 0 4px 6px -1px rgba(30, 64, 175, 0.1);
-}
-.mood-option .icon {
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-}
-.mood-option .label {
-  font-weight: 500;
-  color: #334155;
-}
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-}
-.modal-button {
-  padding: 0.7rem 1.2rem;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.modal-button.cancel {
-  background-color: #f1f5f9;
-  color: #64748b;
-  border: none;
-}
-.modal-button.confirm {
-  background-color: #1e40af;
-  color: white;
-  border: none;
-}
-.modal-button:hover {
-  transform: translateY(-2px);
-}
+        /* ✅ Seat legend */
+        .seat-legend {
+          margin-top: 1.5rem;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem 1.5rem;
+          font-size: 0.9rem;
+          color: #475569;
+        }
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .legend-dot {
+          width: 14px;
+          height: 14px;
+          border-radius: 999px;
+          border: 1px solid #cbd5e1;
+        }
+        .legend-dot.available {
+          background-color: #e2e8f0;
+        }
+        .legend-dot.selected {
+          background-color: #1e40af;
+        }
+        .legend-dot.booked {
+          background-color: #ef4444;
+        }
+        .legend-dot.maintenance {
+          background-color: #f97316;
+        }
+        .legend-dot.recommended {
+          background-color: #dcfce7;
+          border-color: #16a34a;
+        }
 
-@media (max-width: 768px) {
-  .seat-container {
-    flex-direction: column;
-    margin-top: 20px;
-  }
-  
-  .seat-sidebar, .seat-main {
-    width: 100%;
-    padding: 1.5rem;
-  }
-  
-  .seat-sidebar {
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  }
-  
-  .seat-content h1 {
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-  
-  .form-group {
-    margin-bottom: 1.2rem;
-  }
-  
-  .seat {
-    width: 40px;
-    height: 40px;
-    font-size: 14px;
-    margin: 0 5px;
-  }
-  
-  .seat-map-container {
-    padding: 1rem;
-    min-height: 400px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  
-  .horizontal-table {
-    width: 140px;
-    height: 50px;
-  }
-  
-  .vertical-table {
-    width: 50px;
-    height: 140px;
-  }
-  
-  .classroom-type1, .classroom-01-07, .classroom-type2 {
-    height: auto;
-    padding: 20px 10px;
-    overflow: visible;
-    min-height: 400px;
-  }
-  
-  .front-wall-tables, .back-wall-tables {
-    gap: 30px !important;
-    flex-wrap: wrap;
-    width: 100% !important;
-  }
-  
-  .left-wall-table, .right-wall-table {
-    position: relative;
-    left: 0;
-    right: 0;
-    top: 0;
-    transform: none;
-    margin: 20px auto;
-  }
-  
-  .front-wall-tables {
-    top: 20px;
-    margin-bottom: 40px;
-  }
-  
-  .back-wall-tables {
-    bottom: 20px;
-    margin-top: 40px;
-  }
-  
-  .classroom-row {
-    gap: 15px;
-  }
-  
-  .canteen-column, .library-column {
-    gap: 20px;
-  }
-  
-  .seat-notification {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    top: 60px;
-  }
-  
-  .booking-button, .recommend-button {
-    padding: 1rem;
-    font-size: 1.1rem;
-  }
-  
-  .sidebar-summary {
-    display: none;
-  }
-  
-  .mobile-summary {
-    display: block;
-    margin-top: 2rem;
-    padding: 1.5rem;
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  }
-  
-  .mood-options {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
+        /* Mood Modal Styles */
+        .mood-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.3s ease;
+        }
+        .mood-modal-overlay.active {
+          opacity: 1;
+          visibility: visible;
+        }
+        .mood-modal {
+          background-color: white;
+          border-radius: 12px;
+          width: 90%;
+          max-width: 600px;
+          padding: 2rem;
+          transform: translateY(20px);
+          transition: all 0.3s ease;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+          max-height: 80vh;
+          overflow-y: auto;
+        }
+        .mood-modal-overlay.active .mood-modal {
+          transform: translateY(0);
+        }
+        .mood-modal h3 {
+          color: #0f172a;
+          margin-bottom: 1.5rem;
+          font-size: 1.4rem;
+          text-align: center;
+          font-weight: 700;
+        }
+        .mood-options {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+        .mood-option {
+          background-color: #f1f5f9;
+          border: 2px solid transparent;
+          border-radius: 8px;
+          padding: 1rem;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .mood-option:hover {
+          background-color: #e2e8f0;
+          transform: translateY(-3px);
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        .mood-option.selected {
+          border-color: #1e40af;
+          background-color: #eff6ff;
+          box-shadow: 0 4px 6px -1px rgba(30, 64, 175, 0.1);
+        }
+        .mood-option .icon {
+          font-size: 1.8rem;
+          margin-bottom: 0.5rem;
+        }
+        .mood-option .label {
+          font-weight: 500;
+          color: #334155;
+        }
+        .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 1rem;
+        }
+        .modal-button {
+          padding: 0.7rem 1.2rem;
+          border-radius: 6px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .modal-button.cancel {
+          background-color: #f1f5f9;
+          color: #64748b;
+          border: none;
+        }
+        .modal-button.confirm {
+          background-color: #1e40af;
+          color: white;
+          border: none;
+        }
+        .modal-button:hover {
+          transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+          .seat-container {
+            flex-direction: column;
+            margin-top: 20px;
+          }
+          
+          .seat-sidebar, .seat-main {
+            width: 100%;
+            padding: 1.5rem;
+          }
+          
+          .seat-sidebar {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+          }
+          
+          .seat-content h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+          }
+          
+          .form-group {
+            margin-bottom: 1.2rem;
+          }
+          
+          .seat {
+            width: 40px;
+            height: 40px;
+            font-size: 14px;
+            margin: 0 5px;
+          }
+          
+          .seat-map-container {
+            padding: 1rem;
+            min-height: 400px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          
+          .horizontal-table {
+            width: 140px;
+            height: 50px;
+          }
+          
+          .vertical-table {
+            width: 50px;
+            height: 140px;
+          }
+          
+          .classroom-type1, .classroom-01-07, .classroom-type2 {
+            height: auto;
+            padding: 20px 10px;
+            overflow: visible;
+            min-height: 400px;
+          }
+          
+          .front-wall-tables, .back-wall-tables {
+            gap: 30px !important;
+            flex-wrap: wrap;
+            width: 100% !important;
+          }
+          
+          .left-wall-table, .right-wall-table {
+            position: relative;
+            left: 0;
+            right: 0;
+            top: 0;
+            transform: none;
+            margin: 20px auto;
+          }
+          
+          .front-wall-tables {
+            top: 20px;
+            margin-bottom: 40px;
+          }
+          
+          .back-wall-tables {
+            bottom: 20px;
+            margin-top: 40px;
+          }
+          
+          .classroom-row {
+            gap: 15px;
+          }
+          
+          .canteen-column, .library-column {
+            gap: 20px;
+          }
+          
+          .seat-notification {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            top: 60px;
+          }
+          
+          .booking-button, .recommend-button {
+            padding: 1rem;
+            font-size: 1.1rem;
+          }
+          
+          .sidebar-summary {
+            display: none;
+          }
+          
+          .mobile-summary {
+            display: block;
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          }
+          
+          .mood-options {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
         `}
       </style>
       {selectedSeats.length > 0 && (
@@ -1484,6 +1584,31 @@ const Seat = () => {
             <div className="seat-map-container">
               {renderSeatMap()}
             </div>
+
+            {/* ✅ Color legend area */}
+            <div className="seat-legend">
+              <div className="legend-item">
+                <span className="legend-dot available"></span>
+                <span>Available</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-dot selected"></span>
+                <span>Selected</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-dot booked"></span>
+                <span>Booked</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-dot maintenance"></span>
+                <span>Under Maintenance</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-dot recommended"></span>
+                <span>Recommended</span>
+              </div>
+            </div>
+
             <div className="mobile-summary">
               {renderSelectionSummary()}
             </div>
