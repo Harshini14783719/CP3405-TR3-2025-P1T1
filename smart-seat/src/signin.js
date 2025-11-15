@@ -294,7 +294,7 @@ const SignIn = () => {
       <form style={styles.signinForm} onSubmit={handleSubmit}>
         <h1 style={styles.systemTitle}>Smart Seats System</h1>
         <h2 style={styles.pageTitle}>Sign In</h2>
-        
+
         <div style={styles.formGroup}>
           <input
             type="email"
@@ -312,7 +312,7 @@ const SignIn = () => {
             }}
           />
         </div>
-        
+
         <div style={styles.formGroup}>
           <input
             type="password"
@@ -330,7 +330,7 @@ const SignIn = () => {
             autoComplete="current-password"
           />
         </div>
-        
+
         <div style={styles.rememberMe}>
           <input
             type="checkbox"
@@ -342,13 +342,13 @@ const SignIn = () => {
           />
           <label htmlFor="rememberMe" style={styles.rememberLabel}>Remember me</label>
         </div>
-        
+
         <button type="submit" style={styles.signinBtn}>
           Sign in
         </button>
-        
+
         <div style={styles.signupLink}>
-          Don't have an account? 
+          Don't have an account?
           <NavLink to="/signup" style={styles.linkText}>
             Sign up
           </NavLink>

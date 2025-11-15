@@ -46,28 +46,44 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
+// ==================================================================
+// THIS IS THE CORRECTED FUNCTION
+// ==================================================================
 exports.createbooking = async (req, res) => {
   let connection;
-  try { 
+  try {
     connection = await pool.getConnection();
-    const { book_id, book_name, room, seat_number, date, start_time, end_time } = req.body;
+
+    // 1. Read 'status' from the request body.
+    const { book_id, book_name, room, seat_number, date, start_time, end_time, status } = req.body;
+
+    // Use the status from the frontend, or default to 1 (Booked) if it's missing.
+    const bookingStatus = (status !== undefined) ? status : 1;
+
     if (!book_id || !book_name || !room || seat_number === undefined || !date || !start_time || !end_time) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
+
     const [conflicts] = await connection.execute(
-      `SELECT * FROM bookings 
-       WHERE room = ? AND seat_number = ? 
+      `SELECT * FROM bookings
+       WHERE room = ? AND seat_number = ?
          AND date = ? AND start_time = ?`,
       [room, seat_number, date, start_time]
     );
+
     if (conflicts.length > 0) {
       return res.status(409).json({ message: 'Seat already booked in this time range' });
     }
+
+    // 2. Use '?' as a placeholder for the status value.
     const [result] = await connection.execute(
-      `INSERT INTO bookings (room, seat_number, date, start_time, end_time, book_name, book_id, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-      [room, seat_number, date, start_time, end_time, book_name, book_id]
+      `INSERT INTO bookings (room, seat_number, date, start_time, end_time, book_name, book_id, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+
+      // 3. Pass the 'bookingStatus' variable as the last parameter.
+      [room, seat_number, date, start_time, end_time, book_name, book_id, bookingStatus]
     );
+
     const [newbooking] = await connection.execute('SELECT * FROM bookings WHERE id = ?', [result.insertId]);
     res.status(201).json(newbooking[0]);
   } catch (error) {
@@ -77,6 +93,10 @@ exports.createbooking = async (req, res) => {
     if (connection) connection.release();
   }
 };
+// ==================================================================
+// END OF CORRECTED FUNCTION
+// ==================================================================
+
 
 exports.updatebooking = async (req, res) => {
   let connection;

@@ -1,27 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+
 const SeatRecords = () => {
   const [userInfo, setUserInfo] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const statusMap = { 0: 'Upcoming', 1: 'Completed', 2: 'Canceled', 3: 'Expired' };
+
+  // MODIFIED: Added status 4 to represent 'Broken'
+  const statusMap = {
+    0: 'Upcoming',
+    1: 'Completed',
+    2: 'Canceled',
+    3: 'Expired',
+    4: 'Broken' // Admin-set status
+  };
 
   useEffect(() => {
     const fetchUserAndBookings = async () => {
       try {
         const currentUserStr = localStorage.getItem('currentUser');
         if (!currentUserStr) throw new Error('User information missing, please log in again');
-        
+
         const currentUser = JSON.parse(currentUserStr);
         if (!currentUser.id) throw new Error('User information missing, please log in again');
-        
+
         const userId = currentUser.id;
         const userResponse = await axios.get('/api/users/me', {
           headers: { 'user-id': userId }
         });
         setUserInfo(userResponse.data);
-        
+
         const bookingsResponse = await axios.get(`/api/bookings?userId=${userId}`);
         const sortedBookings = bookingsResponse.data.sort((a, b) => {
           const timeA = new Date(`${a.date} ${a.start_time}`).getTime();
@@ -52,12 +61,24 @@ const SeatRecords = () => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
       try {
         await axios.put(`/api/bookings/${bookingId}/cancel`);
-        setBookings(bookings.map(booking => 
+        setBookings(bookings.map(booking =>
           booking.id === bookingId ? { ...booking, status: 2 } : booking
         ));
       } catch (err) {
         alert('Failed to cancel booking: ' + (err.response?.data?.message || 'Unknown error'));
       }
+    }
+  };
+
+  // NEW: Helper function to get the CSS class name based on status
+  const getStatusClassName = (status) => {
+    switch(status) {
+      case 0: return 'upcoming';
+      case 1: return 'completed';
+      case 2: return 'canceled';
+      case 3: return 'expired';
+      case 4: return 'broken';
+      default: return '';
     }
   };
 
@@ -154,6 +175,11 @@ const SeatRecords = () => {
             background-color: #fef3c7;
             color: #92400e;
           }
+          /* NEW: Style for the 'Broken' status badge */
+          .status-broken {
+            background-color: #e5e7eb;
+            color: #4b5563;
+          }
           .booking-details {
             display: flex;
             flex-direction: column;
@@ -192,7 +218,7 @@ const SeatRecords = () => {
           .cancel-btn:hover {
             background-color: #dc2626;
           }
-          
+
           @media (min-width: 768px) {
             .table-wrapper {
               overflow-x: auto;
@@ -234,7 +260,7 @@ const SeatRecords = () => {
               display: none;
             }
           }
-          
+
           @media (max-width: 767px) {
             .records-table-container {
               display: none;
@@ -259,14 +285,9 @@ const SeatRecords = () => {
               <div key={booking.id} className="booking-card">
                 <div className="booking-card-header">
                   <span className="booking-location">{formatLocation(booking.room)}</span>
-                  <span 
-                    className={`status-badge status-${
-                      booking.status === 0 ? 'upcoming' : 
-                      booking.status === 1 ? 'completed' : 
-                      booking.status === 2 ? 'canceled' : 'expired'
-                    }`}
-                  >
-                    {statusMap[booking.status] || 'Unknown Status'}
+                  {/* MODIFIED: Using the helper function for cleaner code */}
+                  <span className={`status-badge status-${getStatusClassName(booking.status)}`}>
+                    {statusMap[booking.status] || 'Unknown'}
                   </span>
                 </div>
                 <div className="booking-details">
@@ -286,8 +307,9 @@ const SeatRecords = () => {
                   </div>
                 </div>
                 <div className="booking-actions">
+                  {/* Logic remains the same: only upcoming bookings can be canceled */}
                   {booking.status === 0 && (
-                    <button 
+                    <button
                       className="cancel-btn"
                       onClick={() => cancelBooking(booking.id)}
                     >
@@ -298,7 +320,7 @@ const SeatRecords = () => {
               </div>
             ))}
           </div>
-          
+
           <div className="records-table-container">
             <div className="table-wrapper">
               <table className="records-table">
@@ -322,19 +344,14 @@ const SeatRecords = () => {
                         {booking.start_time} - {booking.end_time}
                       </td>
                       <td>
-                        <span 
-                          className={`status-badge status-${
-                            booking.status === 0 ? 'upcoming' : 
-                            booking.status === 1 ? 'completed' : 
-                            booking.status === 2 ? 'canceled' : 'expired'
-                          }`}
-                        >
-                          {statusMap[booking.status] || 'Unknown Status'}
+                        {/* MODIFIED: Using the helper function here as well */}
+                        <span className={`status-badge status-${getStatusClassName(booking.status)}`}>
+                          {statusMap[booking.status] || 'Unknown'}
                         </span>
                       </td>
                       <td>
                         {booking.status === 0 && (
-                          <button 
+                          <button
                             className="cancel-btn"
                             onClick={() => cancelBooking(booking.id)}
                           >

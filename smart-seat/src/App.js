@@ -11,6 +11,26 @@ import Mine from './mine';
 import LecClass from './lec-class';
 import Canteen1 from './Canteen1';
 
+// ==================================================================
+// SOLUTION: The PrivateRoute component is moved OUTSIDE the App function.
+// This prevents it from being recreated on every render, which was causing
+// the page components to unmount and remount (appearing as a "refresh").
+// ==================================================================
+const PrivateRoute = ({ element, requireLecturer = false }) => {
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+
+  if (!isLoggedIn) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  if (requireLecturer && currentUser?.role !== 'lecturer') {
+    return <Navigate to="/mine" replace />;
+  }
+
+  return element;
+};
+
 
 function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -27,13 +47,7 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const PrivateRoute = ({ element, requireLecturer = false }) => {
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (!isLoggedIn) return <Navigate to="/signin" replace />;
-    if (requireLecturer && currentUser?.role !== 'lecturer') return <Navigate to="/mine" replace />;
-    return element;
-  };
+  // The PrivateRoute component definition has been moved outside.
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -47,16 +61,16 @@ function App() {
     let path = location.pathname;
     if (path === '/home') {
       setActiveTab('home');
-    } 
-    else if (path.startsWith('/seat') || path === '/lec-class') {
+    }
+    else if (path.startsWith('/seat') || path === '/lec-class' || path === '/seat-records') {
       setActiveTab('seat');
-    } 
+    }
      else if (path === '/mine') {
       setActiveTab('mine');
     }
     setHoveredTab('');
     setSeatSubItemHover('');
-  }, [location.pathname, userInfo]);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -88,6 +102,7 @@ function App() {
       const syncUserInfo = async () => {
         try {
           const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+          if (!currentUser || !currentUser.id) return;
           const response = await fetch('/api/users/me', {
             headers: { 'user-id': currentUser.id }
           });
