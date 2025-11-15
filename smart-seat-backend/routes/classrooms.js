@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 const router = express.Router();
 
 const dbConfig = {
-  host: 'cp3405-tr3-2025-p1t1-mysql-1',
+  host: 'localhost',
   user: 'root',
   password: 'asdfgh123',
   database: 'smart_seat',

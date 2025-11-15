@@ -7,13 +7,16 @@ const SeatRecords = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // MODIFIED: Added status 4 to represent 'Broken'
+  // NEW: State to manage the QR code modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState({ qrcode: '', seat_number: '' });
+
   const statusMap = {
     0: 'Upcoming',
     1: 'Completed',
     2: 'Canceled',
     3: 'Expired',
-    4: 'Broken' // Admin-set status
+    4: 'Broken'
   };
 
   useEffect(() => {
@@ -33,8 +36,9 @@ const SeatRecords = () => {
 
         const bookingsResponse = await axios.get(`/api/bookings?userId=${userId}`);
         const sortedBookings = bookingsResponse.data.sort((a, b) => {
-          const timeA = new Date(`${a.date} ${a.start_time}`).getTime();
-          const timeB = new Date(`${b.date} ${b.start_time}`).getTime();
+          // MODIFIED: Ensure date strings are correctly parsed
+          const timeA = new Date(a.date).getTime();
+          const timeB = new Date(b.date).getTime();
           return timeB - timeA;
         });
         setBookings(sortedBookings);
@@ -70,7 +74,37 @@ const SeatRecords = () => {
     }
   };
 
-  // NEW: Helper function to get the CSS class name based on status
+  // NEW: Function to handle viewing the QR code
+  const handleViewQrCode = async (booking) => {
+    // If the QR code is already in our state, just show it
+    if (booking.qrcode) {
+      setModalContent({ qrcode: booking.qrcode, seat_number: booking.seat_number });
+      setIsModalOpen(true);
+      return;
+    }
+
+    // If not, call the API to generate/fetch it
+    try {
+      const response = await axios.post('/api/bookings/generate-qrcode', { bookingId: booking.id });
+      const newQrCode = response.data.qrcode;
+
+      // Update the bookings list with the new QR code for caching
+      setBookings(currentBookings =>
+        currentBookings.map(b =>
+          b.id === booking.id ? { ...b, qrcode: newQrCode } : b
+        )
+      );
+
+      // Set content and open the modal
+      setModalContent({ qrcode: newQrCode, seat_number: booking.seat_number });
+      setIsModalOpen(true);
+    } catch (err) {
+      alert('Failed to retrieve QR code. Please try again.');
+      console.error('QR Code fetch error:', err);
+    }
+  };
+
+
   const getStatusClassName = (status) => {
     switch(status) {
       case 0: return 'upcoming';
@@ -159,112 +193,90 @@ const SeatRecords = () => {
             font-size: 0.8rem;
             font-weight: 600;
           }
-          .status-upcoming {
-            background-color: #dbeafe;
-            color: #1e40af;
-          }
-          .status-completed {
-            background-color: #dcfce7;
-            color: #166534;
-          }
-          .status-canceled {
-            background-color: #fee2e2;
-            color: #b91c1c;
-          }
-          .status-expired {
-            background-color: #fef3c7;
-            color: #92400e;
-          }
-          /* NEW: Style for the 'Broken' status badge */
-          .status-broken {
-            background-color: #e5e7eb;
-            color: #4b5563;
-          }
-          .booking-details {
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-          }
-          .booking-detail-item {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9rem;
-          }
-          .detail-label {
-            color: #64748b;
-          }
-          .detail-value {
-            color: #334155;
-            font-weight: 500;
-          }
-          .time-display {
-            color: #1e40af;
-          }
+          .status-upcoming { background-color: #dbeafe; color: #1e40af; }
+          .status-completed { background-color: #dcfce7; color: #166534; }
+          .status-canceled { background-color: #fee2e2; color: #b91c1c; }
+          .status-expired { background-color: #fef3c7; color: #92400e; }
+          .status-broken { background-color: #e5e7eb; color: #4b5563; }
+          .booking-details { display: flex; flex-direction: column; gap: 0.4rem; }
+          .booking-detail-item { display: flex; justify-content: space-between; font-size: 0.9rem; }
+          .detail-label { color: #64748b; }
+          .detail-value { color: #334155; font-weight: 500; }
+          .time-display { color: #1e40af; }
           .booking-actions {
             display: flex;
             justify-content: flex-end;
+            gap: 0.5rem; /* NEW: Added gap for button spacing */
             margin-top: 0.5rem;
           }
-          .cancel-btn {
+          .action-btn { /* NEW: A general class for buttons */
             padding: 0.4rem 0.8rem;
-            background-color: #ef4444;
-            color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-weight: 500;
             font-size: 0.9rem;
+            transition: background-color 0.2s;
           }
-          .cancel-btn:hover {
-            background-color: #dc2626;
+          .qr-btn { /* NEW: Style for the QR code button */
+            background-color: #3b82f6;
+            color: white;
+          }
+          .qr-btn:hover { background-color: #2563eb; }
+          .cancel-btn { background-color: #ef4444; color: white; }
+          .cancel-btn:hover { background-color: #dc2626; }
+
+          /* NEW: Styles for the QR Code Modal */
+          .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+          }
+          .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+          }
+          .modal-content h3 {
+            margin-bottom: 1.5rem;
+            color: #0f172a;
+          }
+          .modal-content img {
+            width: 250px;
+            height: 250px;
+          }
+          .modal-close-btn {
+            margin-top: 1.5rem;
+            padding: 0.5rem 1.5rem;
+            background-color: #64748b;
+            color: white;
+          }
+          .modal-close-btn:hover {
+            background-color: #475569;
           }
 
           @media (min-width: 768px) {
-            .table-wrapper {
-              overflow-x: auto;
-            }
-            .records-table-container {
-              background-color: #ffffff;
-              border-radius: 8px;
-              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-              overflow: hidden;
-            }
-            .records-table {
-              width: 100%;
-              min-width: 600px;
-              border-collapse: collapse;
-            }
-            .records-table th {
-              background-color: #1e40af;
-              color: #ffffff;
-              text-align: left;
-              padding: 0.8rem 1rem;
-              font-size: 0.85rem;
-              font-weight: 600;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-            .records-table td {
-              padding: 0.8rem 1rem;
-              color: #334155;
-              font-size: 0.85rem;
-              border-bottom: 1px solid #f1f5f9;
-            }
-            .records-table tr:last-child td {
-              border-bottom: none;
-            }
-            .records-table tr:hover td {
-              background-color: #f8fafc;
-            }
-            .booking-cards {
-              display: none;
-            }
+            .table-wrapper { overflow-x: auto; }
+            .records-table-container { background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); overflow: hidden; }
+            .records-table { width: 100%; min-width: 600px; border-collapse: collapse; }
+            .records-table th { background-color: #1e40af; color: #ffffff; text-align: left; padding: 0.8rem 1rem; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+            .records-table td { padding: 0.8rem 1rem; color: #334155; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9; }
+            .records-table tr:last-child td { border-bottom: none; }
+            .records-table tr:hover td { background-color: #f8fafc; }
+            .booking-cards { display: none; }
+            .records-table .booking-actions { margin-top: 0; }
           }
-
           @media (max-width: 767px) {
-            .records-table-container {
-              display: none;
-            }
+            .records-table-container { display: none; }
           }
         `}
       </style>
@@ -285,7 +297,6 @@ const SeatRecords = () => {
               <div key={booking.id} className="booking-card">
                 <div className="booking-card-header">
                   <span className="booking-location">{formatLocation(booking.room)}</span>
-                  {/* MODIFIED: Using the helper function for cleaner code */}
                   <span className={`status-badge status-${getStatusClassName(booking.status)}`}>
                     {statusMap[booking.status] || 'Unknown'}
                   </span>
@@ -307,14 +318,16 @@ const SeatRecords = () => {
                   </div>
                 </div>
                 <div className="booking-actions">
-                  {/* Logic remains the same: only upcoming bookings can be canceled */}
+                  {/* MODIFIED: Show QR and Cancel buttons for upcoming bookings */}
                   {booking.status === 0 && (
-                    <button
-                      className="cancel-btn"
-                      onClick={() => cancelBooking(booking.id)}
-                    >
-                      Cancel
-                    </button>
+                    <>
+                      <button className="action-btn qr-btn" onClick={() => handleViewQrCode(booking)}>
+                        View QR Code
+                      </button>
+                      <button className="action-btn cancel-btn" onClick={() => cancelBooking(booking.id)}>
+                        Cancel
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -340,24 +353,26 @@ const SeatRecords = () => {
                       <td>{formatLocation(booking.room)}</td>
                       <td>{booking.seat_number}</td>
                       <td>{new Date(booking.date).toISOString().split('T')[0]}</td>
-                      <td className="time-display">
-                        {booking.start_time} - {booking.end_time}
-                      </td>
+                      <td className="time-display">{booking.start_time} - {booking.end_time}</td>
                       <td>
-                        {/* MODIFIED: Using the helper function here as well */}
                         <span className={`status-badge status-${getStatusClassName(booking.status)}`}>
                           {statusMap[booking.status] || 'Unknown'}
                         </span>
                       </td>
                       <td>
-                        {booking.status === 0 && (
-                          <button
-                            className="cancel-btn"
-                            onClick={() => cancelBooking(booking.id)}
-                          >
-                            Cancel
-                          </button>
-                        )}
+                        {/* MODIFIED: Same logic as the card view */}
+                        <div className="booking-actions">
+                          {booking.status === 0 && (
+                            <>
+                              <button className="action-btn qr-btn" onClick={() => handleViewQrCode(booking)}>
+                                View QR Code
+                              </button>
+                              <button className="action-btn cancel-btn" onClick={() => cancelBooking(booking.id)}>
+                                Cancel
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -367,7 +382,21 @@ const SeatRecords = () => {
           </div>
         </>
       )}
+
+      {/* NEW: The Modal for displaying the QR Code */}
+      {isModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>QR Code for Seat {modalContent.seat_number}</h3>
+            <img src={modalContent.qrcode} alt={`QR Code for Seat ${modalContent.seat_number}`} />
+            <button className="action-btn modal-close-btn" onClick={() => setIsModalOpen(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
 export default SeatRecords;

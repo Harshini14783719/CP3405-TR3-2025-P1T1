@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-   "start": "wait-on tcp:mysql:3306 && nodemon index.js",
+    "start": "wait-on tcp:mysql:3306 && nodemon index.js",
     "dev": "nodemon index.js"
   },
   "keywords": [],
@@ -11,20 +11,21 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "axios": "^1.13.1",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "mysql2": "^3.15.1",
-    "ws": "^8.18.0",
+    "@tensorflow-models/coco-ssd": "^2.2.2",
     "@tensorflow/tfjs": "^4.19.0",
     "@tensorflow/tfjs-node": "^4.19.0",
-    "@tensorflow-models/coco-ssd": "^2.2.2",
+    "axios": "^1.13.1",
     "canvas": "^2.11.2",
-    "dotenv": "^16.3.1",    
-    "requirements": "^2.0.2"
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^5.1.0",
+    "mysql2": "^3.15.1",
+    "qrcode": "^1.5.4",
+    "requirements": "^2.0.2",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "wait-on": "^9.0.1",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "wait-on": "^9.0.1"
   }
 }

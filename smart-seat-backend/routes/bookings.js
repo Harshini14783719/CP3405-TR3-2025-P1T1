@@ -5,14 +5,17 @@ const bookingController = require('../controllers/bookingController');
 router.get('/', bookingController.getAllBookings);
 router.get('/getBookedSeats', bookingController.getBookedSeats);
 router.post('/update-expired', bookingController.updateExpiredBookings);
+
+router.post('/generate-qrcode', bookingController.generateQrCode);
+router.get('/verify-booking/:bookingId', bookingController.verifyBooking);
+
+router.post('/update-by-detection', bookingController.updateSeatStatusByDetection);
+
 router.get('/:id', bookingController.getBookingById);
 router.post('/', bookingController.createbooking);
 router.put('/:id', bookingController.updatebooking);
 router.patch('/:id', bookingController.updatebooking);
-router.delete('/:id', bookingController.deletebooking);
 router.put('/:id/cancel', bookingController.cancelBooking);
-router.post('/update-by-detection', bookingController.updateSeatStatusByDetection);
-
+router.delete('/:id', bookingController.deletebooking);
 
 module.exports = router;
-    

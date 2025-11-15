@@ -10,6 +10,7 @@ import SeatRecords from './seat-records';
 import Mine from './mine';
 import LecClass from './lec-class';
 import Canteen1 from './Canteen1';
+import BookingSuccess from './BookingSuccess';
 
 // ==================================================================
 // SOLUTION: The PrivateRoute component is moved OUTSIDE the App function.
@@ -874,6 +875,7 @@ function App() {
         <Route path="/lec-class" element={<PrivateRoute element={<LecClass />} requireLecturer={true} />} />
         <Route path="/canteen-1" element={<PrivateRoute element={<Canteen1 />} />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
+        <Route path="/booking-success" element={<BookingSuccess />} />
       </Routes>
       
       </div>

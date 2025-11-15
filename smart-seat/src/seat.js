@@ -1,7 +1,14 @@
+// src/components/Seat.js (Updated version)
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
+// ==================== 新增引入 ====================
+import { useNavigate } from 'react-router-dom';
 
 const Seat = () => {
+    // ==================== 新增代码 ====================
+    const navigate = useNavigate();
+
     const OPEN_HOUR = 6;
     const CLOSE_HOUR = 23;
     const MAX_DURATION = 3;
@@ -23,7 +30,6 @@ const Seat = () => {
     const [recommendedSeat, setRecommendedSeat] = useState(null);
     const [selectedMood, setSelectedMood] = useState('');
     const [scrollY, setScrollY] = useState(0);
-    // MODIFIED: User info state now includes 'role'
     const [userInfo, setUserInfo] = useState({ id: '', name: '', role: '' });
     const [errorMsg, setErrorMsg] = useState('');
     const [bookPurpose, setBookPurpose] = useState('study');
@@ -47,7 +53,6 @@ const Seat = () => {
     useEffect(() => {
         const currentUser = JSON.parse(localStorage.getItem('currentUser'));
         if (currentUser) {
-            // MODIFIED: Capture user's role from localStorage
             setUserInfo({ id: currentUser.id, name: currentUser.name, role: currentUser.role });
         }
     }, []);
@@ -132,7 +137,6 @@ const Seat = () => {
                 params: { room, date: selectedDate, start_time: `${selectedHour}:00`, end_time: `${endTime}:00` }
             });
             const booked = {};
-            // MODIFIED: Store the status of the booking (e.g., 1 for booked, 4 for broken)
             response.data.forEach(item => {
                 booked[item.seat_number] = item.status;
             });
@@ -173,58 +177,103 @@ const Seat = () => {
     }, [selectedDate, selectedHour, endTime, getRoomIdentifier]);
 
     const toggleSeat = (seatNumber) => {
-        // Prevent selecting seats that are already booked or broken
         if (bookedSeats[seatNumber]) return;
         setSelectedSeats(prev =>
             prev.includes(seatNumber) ? prev.filter(num => num !== seatNumber) : [...prev, seatNumber]
         );
     };
 
-    const handleBooking = async () => {
-        if (selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier()) return;
+    // ==================== handleBooking 函数已重写 ====================
+// ==================== 这是最终确认版的 handleBooking 函数 ====================
+const handleBooking = async () => {
+    if (selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier()) {
+        return;
+    }
 
-        const start_time = `${selectedHour}:00`;
-        const end_time = `${endTime}:00`;
-        const room = getRoomIdentifier();
+    const start_time = `${selectedHour}:00`;
+    const end_time = `${endTime}:00`;
+    const room = getRoomIdentifier();
+    const bookingStatus = userInfo.role === 'admin' ? 4 : 0;
 
-        // NEW: Determine booking status based on user role.
-        // If the user is an admin, the status is 4 (Broken). Otherwise, it's 1 (Booked).
-        const bookingStatus = userInfo.role === 'admin' ? 4 : 1;
+    const successfulBookings = [];
+    setLoading(true);
 
-        try {
-            for (const seat_number of selectedSeats) {
-                await axios.post('/api/bookings', {
-                    book_id: userInfo.id,
-                    book_name: userInfo.name,
-                    room,
-                    seat_number,
-                    date: selectedDate,
-                    start_time,
-                    end_time,
-                    status: bookingStatus, // Use the determined status
-                    book_purpose: bookPurpose
+    try {
+        for (const seat_number of selectedSeats) {
+            // 第1步：创建预订记录
+            const bookingResponse = await axios.post('/api/bookings', {
+                book_id: userInfo.id,
+                book_name: userInfo.name,
+                room,
+                seat_number,
+                date: selectedDate,
+                start_time,
+                end_time,
+                status: bookingStatus,
+                book_purpose: bookPurpose
+            });
+
+            // 根据你的 Postman 响应，直接从返回的数据中获取 id
+            const newBookingId = bookingResponse.data.id;
+
+            if (newBookingId) {
+                // 第2步：为新的预订生成二维码
+                const qrCodeResponse = await axios.post('/api/bookings/generate-qrcode', {
+                    bookingId: newBookingId
                 });
-            }
-            alert('Booking successful!');
-            setSelectedSeats([]);
-            fetchBookedSeats(); // Refresh seat status
-        } catch (error) {
-            console.error('Booking error:', error);
-            alert('Booking failed: ' + (error.response?.data?.message || 'Unknown error'));
-        }
-    };
 
-    // NEW: Helper function to determine seat class based on its status
+                successfulBookings.push({
+                    seat_number: seat_number,
+                    qrcode: qrCodeResponse.data.qrcode
+                });
+            } else {
+                // 如果因为某种原因没有在响应中找到 ID
+                console.error('Could not find booking ID in the response for seat:', seat_number, bookingResponse.data);
+            }
+        }
+
+        // 如果至少有一个预订成功，则跳转到成功页面
+        if (successfulBookings.length > 0) {
+            navigate('/booking-success', { state: { bookings: successfulBookings } });
+        } else {
+            // 如果所有预订都因某种原因失败（例如API没有返回ID）
+            alert('Booking process completed, but no seats were successfully booked. Please check the console for errors.');
+        }
+
+    } catch (error) {
+        console.error('Booking error:', error);
+        // 优先显示后端返回的明确错误信息
+        const errorMessage = error.response?.data?.message || 'An unknown error occurred during booking.';
+
+        // 如果在循环中发生错误，部分座位可能已经预订成功
+        if (successfulBookings.length > 0) {
+            alert(`An error occurred: ${errorMessage}\n\nSome seats (${successfulBookings.length}/${selectedSeats.length}) were booked successfully.`);
+            // 即使出错了，也跳转页面以显示已成功的二维码
+            navigate('/booking-success', {
+                state: {
+                    bookings: successfulBookings,
+                    error: `Some bookings may have failed. Please verify.`
+                }
+            });
+        } else {
+            // 如果没有任何座位预订成功就出错了
+            alert(`Booking failed: ${errorMessage}`);
+        }
+    } finally {
+        setLoading(false);
+    }
+};
+
     const getSeatClassName = (seatNum) => {
         const status = bookedSeats[seatNum];
         let className = 'seat';
 
         if (selectedSeats.includes(seatNum)) {
             className += ' selected';
-        } else if (status === 1) {
-            className += ' booked'; // Regular booking
+        } else if (status === 0) {
+            className += ' booked';
         } else if (status === 4) {
-            className += ' broken'; // Admin booking (Broken)
+            className += ' broken';
         }
 
         if (recommendedSeat === seatNum) {
@@ -289,6 +338,8 @@ const Seat = () => {
         }
     };
 
+    // ... 此处省略所有 render... 函数 (renderCanteenSeats, renderLibrarySeats etc.) ...
+    // ... 它们保持不变，无需修改 ...
     const renderCanteenSeats = () => {
         const isMobile = window.innerWidth < 768;
         const columns = isMobile ? 3 : 3;
@@ -576,7 +627,8 @@ const Seat = () => {
             </button>
         </div>
     );
-
+    // ... 此处省略 return (...) JSX 部分 ...
+    // ... 它也保持不变，无需修改 ...
     return (
         <div>
             <style>
