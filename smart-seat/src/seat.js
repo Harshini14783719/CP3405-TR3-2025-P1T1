@@ -1355,6 +1355,43 @@ useEffect(() => {
   font-size: 1.3rem;
   box-shadow: inset 0 0 6px rgba(14, 165, 233, 0.4), 0 2px 6px rgba(0,0,0,0.1);
 }
+/* Seat Legend Styles */
+.seat-legend {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  background-color: #e5e7eb;
+  padding: 10px 25px;
+  border-radius: 50px;
+  margin-top: 30px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: #0f172a;
+  font-weight: 500;
+}
+.legend-color {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+.legend-color.unreserved {
+  background-color:rgb(122, 133, 152); /* gray */
+  border: 1px solid #d1d5db;
+}
+.legend-color.chosen {
+  background-color: #3b82f6; /* blue */
+}
+.legend-color.reserved {
+  background-color: #ef4444; /* red */
+}
 
 @media (max-width: 768px) {
   .seat-container {
@@ -1663,6 +1700,22 @@ useEffect(() => {
             <div className="seat-map-container">
               {renderSeatMap()}
             </div>
+            {/* Seat Legend */}
+            <div className="seat-legend">
+              <div className="legend-item">
+                <div className="legend-color unreserved"></div>
+                <span>un-reserved</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-color chosen"></div>
+                <span>chosen</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-color reserved"></div>
+                <span>reserved</span>
+              </div>
+            </div>
+
             {predictionData && (
               <div style={{ marginTop: '20px', padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '6px' }}>
                 <h3 style={{ color: '#1e40af', marginBottom: '10px' }}>Predicted Usage</h3>
@@ -1682,7 +1735,7 @@ useEffect(() => {
                 {predictionData?.error && <div style={{ marginTop: '20px', color: 'red' }}>{predictionData.error}</div>}
               </div>
             )}
-
+    
             <div className="mobile-summary">
               {renderSelectionSummary()}
             </div>
