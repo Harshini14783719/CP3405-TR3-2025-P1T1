@@ -1383,14 +1383,21 @@ useEffect(() => {
   border-radius: 50%;
 }
 .legend-color.unreserved {
-  background-color:rgb(122, 133, 152); /* gray */
+  background-color:rgb(122, 133, 152);
   border: 1px solid #d1d5db;
 }
-.legend-color.chosen {
-  background-color: #3b82f6; /* blue */
+.legend-color.selected {
+  background-color: #3b82f6;
 }
 .legend-color.reserved {
-  background-color: #ef4444; /* red */
+  background-color: #ef4444;
+}
+.legend-color.recommended {
+  background-color:rgb(166, 233, 186);
+  border: 2px solid rgb(34, 107, 56);
+}
+.legend-color.unavailable {
+  background-color:rgb(1, 1, 1);
 }
 
 @media (max-width: 768px) {
@@ -1707,12 +1714,20 @@ useEffect(() => {
                 <span>un-reserved</span>
               </div>
               <div className="legend-item">
-                <div className="legend-color chosen"></div>
-                <span>chosen</span>
+                <div className="legend-color selected"></div>
+                <span>selected</span>
               </div>
               <div className="legend-item">
                 <div className="legend-color reserved"></div>
                 <span>reserved</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-color recommended"></div>
+                <span>recommended</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-color unavailable"></div>
+                <span>unavailable</span>
               </div>
             </div>
 
