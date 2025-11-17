@@ -11,7 +11,33 @@ const Seat = () => {
   const [classroomFloor, setClassroomFloor] = useState('');
   const [classroomRoom, setClassroomRoom] = useState('');
   const [selectedSeats, setSelectedSeats] = useState([]);
-  const [bookedSeats, setBookedSeats] = useState({});
+  // const [bookedSeats, setBookedSeats] = useState({});
+  // Example: pre-reserved seats that show as booked on load
+  const defaultReservedSeats = {
+    2: true,
+    5: true,
+    8: true,
+    12: true,
+    20: true,
+    27: true,
+  };
+  // Example: broken/unavailable seats (black color)
+  const defaultBrokenSeats = {
+    9: true, // choose any seat number to mark as broken
+  };
+  // Helper function to assign seat classes consistently
+  const getSeatClass = (seatNum) => {
+    const classes = ['seat'];
+    if (selectedSeats.includes(seatNum)) classes.push('selected');
+    if (bookedSeats[seatNum]) {
+      if (defaultBrokenSeats[seatNum]) classes.push('broken');
+      else classes.push('booked');
+    }
+    if (recommendedSeat === seatNum) classes.push('recommended');
+    return classes.join(' ');
+  };
+  const [bookedSeats, setBookedSeats] = useState(defaultReservedSeats, defaultBrokenSeats);
+
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedHour, setSelectedHour] = useState('');
   const [durationHrs, setDurationHrs] = useState(1);
@@ -160,7 +186,7 @@ const Seat = () => {
           end_time: `${endTime}:00`
         }
       });
-      const booked = {};
+      const booked = { ...defaultReservedSeats, ...defaultBrokenSeats };
       response.data.forEach(item => {
         booked[item.seat_number] = true;
       });
@@ -357,7 +383,7 @@ useEffect(() => {
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={getSeatClass(seatNum)}                       
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -375,7 +401,7 @@ useEffect(() => {
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={getSeatClass(seatNum)}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -426,7 +452,7 @@ useEffect(() => {
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={getSeatClass(seatNum)}                        
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}                        
@@ -444,7 +470,7 @@ useEffect(() => {
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={getSeatClass(seatNum)}                        
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -488,7 +514,7 @@ useEffect(() => {
               <div 
                 key={seatNum}
                 data-seat={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                className={getSeatClass(seatNum)}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -502,7 +528,7 @@ useEffect(() => {
               <div 
                 key={seatNum}
                 data-seat={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                className={getSeatClass(seatNum)}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -518,7 +544,7 @@ useEffect(() => {
               <div 
                 key={seatNum}
                 data-seat={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                className={getSeatClass(seatNum)}
                 onClick={() => toggleSeat(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -532,8 +558,7 @@ useEffect(() => {
               <div 
                 key={seatNum}
                 data-seat={seatNum}
-                className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                onClick={() => toggleSeat(seatNum)}
+                className={getSeatClass(seatNum)}
                 disabled={bookedSeats[seatNum]}
                 style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
               >
@@ -552,7 +577,7 @@ useEffect(() => {
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={getSeatClass(seatNum)}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -566,7 +591,7 @@ useEffect(() => {
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={getSeatClass(seatNum)}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -582,7 +607,7 @@ useEffect(() => {
                   <div 
                     key={seatNum}
                     data-seat={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                    className={getSeatClass(seatNum)}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -596,7 +621,7 @@ useEffect(() => {
                   <div 
                     key={seatNum}
                     data-seat={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                    className={getSeatClass(seatNum)}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -618,7 +643,7 @@ useEffect(() => {
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={getSeatClass(seatNum)}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -632,7 +657,7 @@ useEffect(() => {
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={getSeatClass(seatNum)}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `0 ${seatMargin}px` }}
@@ -648,7 +673,7 @@ useEffect(() => {
                   <div 
                     key={seatNum}
                     data-seat={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                    className={getSeatClass(seatNum)}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -662,7 +687,7 @@ useEffect(() => {
                   <div 
                     key={seatNum}
                     data-seat={seatNum}
-                    className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                    className={getSeatClass(seatNum)}
                     onClick={() => toggleSeat(seatNum)}
                     disabled={bookedSeats[seatNum]}
                     style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px 0` }}
@@ -718,8 +743,7 @@ useEffect(() => {
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
-                        onClick={() => toggleSeat(seatNum)}
+                        className={getSeatClass(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
                       >
@@ -735,7 +759,7 @@ useEffect(() => {
                       <div 
                         key={seatNum}
                         data-seat={seatNum}
-                        className={`seat ${selectedSeats.includes(seatNum) ? 'selected' : ''} ${bookedSeats[seatNum] ? 'booked' : ''} ${recommendedSeat === seatNum ? 'recommended' : ''}`}
+                        className={getSeatClass(seatNum)}
                         onClick={() => toggleSeat(seatNum)}
                         disabled={bookedSeats[seatNum]}
                         style={{ width: seatSize, height: seatSize, margin: `${seatMargin}px` }}
@@ -882,6 +906,12 @@ useEffect(() => {
 .seat.booked {
   background-color: #ef4444;
   cursor: not-allowed;
+}
+/* Broken or unavailable seat */
+.seat.broken {
+  background-color: #000000;
+  cursor: not-allowed;
+  opacity: 0.9;
 }
 .seat.recommended {
   border: 3px solid #10b981;
@@ -1387,7 +1417,7 @@ useEffect(() => {
   border: 1px solid #d1d5db;
 }
 .legend-color.selected {
-  background-color: #3b82f6;
+  background-color: #1e40af;
 }
 .legend-color.reserved {
   background-color: #ef4444;
