@@ -21,6 +21,8 @@ Harshini Raghuram, Nang Laung Phoung
 #### UX writer
 Sin Nather Paing
 
+* We change the roles every other week to have every member experience each role.
+
 ## purpose
 This team’s purpose is to create SmartSeat - an AI-powered intelligent seating and occupancy management system. It aims to  improve classroom seating by helping students quickly find available seats in real time and assisting lecturers and administrators in tracking usage patterns to address issues like overcrowding, unclear availability, and accessibility.
 
@@ -33,4 +35,5 @@ Express
 
 #### Database
 Mysql
+
 
