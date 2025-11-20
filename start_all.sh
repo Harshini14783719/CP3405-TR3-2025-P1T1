@@ -1,56 +1,56 @@
 #!/bin/zsh
 
-# --- 一键启动所有服务 ---
+# --- One-Click Start for All Services ---
 #
-# 使用方法:
-# 1. 将此脚本放在您的项目根目录中 (包含 smart-seat-backend 和 smart-seat 的地方)。
-# 2. 在终端中运行 `chmod +x start_all.sh` 使其可执行。
-# 3. 运行 `./start_all.sh` 来启动所有服务。
+# Usage:
+# 1. Put this script in your project root directory (the one that contains smart-seat-backend and smart-seat).
+# 2. Run `chmod +x start_all.sh` in the terminal to make it executable.
+# 3. Run `./start_all.sh` to start all services.
 
-echo "🚀  开始启动所有智能座位预定服务..."
+echo "🚀  Starting all Smart Seat Reservation services..."
 echo "----------------------------------------"
 
-# 获取脚本所在的目录作为项目根目录
+# Use the directory where this script is executed as the project root
 PROJECT_ROOT=$(pwd)
 BACKEND_DIR="$PROJECT_ROOT/smart-seat-backend"
 FRONTEND_DIR="$PROJECT_ROOT/smart-seat"
 
-# --- 启动 Python 后端服务 (在 rl_env_conda 环境中) ---
+# --- Start Python backend services (in rl_env_conda environment) ---
 
-# 使用 conda run -n <环境名> <命令> 是在脚本中运行conda环境的最佳方式
-# 它会自动处理环境激活，并且更可靠。
+# Using `conda run -n <env_name> <command>` is the recommended way to run a conda environment inside scripts.
+# It automatically handles environment activation and is more reliable.
 
-echo "🐍  [1/6] 启动 ARIMA 服务..."
+echo "🐍  [1/6] Starting ARIMA service..."
 cd "$BACKEND_DIR/ARIMA"
 conda run -n rl_env_conda python app.py &
 
-echo "🧠  [2/6] 启动 Model Service (seat-predict)..."
+echo "🧠  [2/6] Starting Model Service (seat-predict)..."
 cd "$BACKEND_DIR/model-service"
 conda run -n rl_env_conda python seat-predict.py &
 
-echo "🤖  [3/6] 启动 RL API 服务 (Uvicorn)..."
+echo "🤖  [3/6] Starting RL API service (Uvicorn)..."
 cd "$BACKEND_DIR/RL"
 conda run -n rl_env_conda python -m uvicorn rl_api:app --port 8000 --reload &
 
 
-# --- 启动 Node.js 后端服务 ---
+# --- Start Node.js backend services ---
 
-echo "🟩  [4/6] 启动 RL 目录下的 Node App (app.js)..."
+echo "🟩  [4/6] Starting Node app in RL directory (app.js)..."
 cd "$BACKEND_DIR/RL"
 node app.js &
 
-echo "🟩  [5/6] 启动 Backend 主服务 (index.js)..."
+echo "🟩  [5/6] Starting main backend service (index.js)..."
 cd "$BACKEND_DIR"
 node index.js &
 
 
-# --- 启动 Node.js 前端服务 ---
+# --- Start Node.js frontend service ---
 
-echo "⚛️   [6/6] 启动 React 前端 (npm start)..."
+echo "⚛️   [6/6] Starting React frontend (npm start)..."
 cd "$FRONTEND_DIR"
 npm start &
 
 echo "----------------------------------------"
-echo "✅  所有服务已在后台启动！"
-echo "您可以关闭此终端窗口，服务将继续运行。"
-echo "要停止所有服务，请运行 ./stop_all.sh 脚本。"
+echo "✅  All services have been started in the background!"
+echo "You can close this terminal window; the services will keep running."
+echo "To stop all services, please run the ./stop_all.sh script."

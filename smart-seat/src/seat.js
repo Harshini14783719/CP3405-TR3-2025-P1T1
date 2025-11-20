@@ -1,12 +1,10 @@
-// src/components/Seat.js (Updated version)
+// src/components/Seat.js (Added Chargers)
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-// ==================== 新增引入 ====================
 import { useNavigate } from 'react-router-dom';
 
 const Seat = () => {
-    // ==================== 新增代码 ====================
     const navigate = useNavigate();
 
     const OPEN_HOUR = 6;
@@ -134,11 +132,30 @@ const Seat = () => {
         setLoading(true);
         try {
             const response = await axios.get('/api/bookings/getBookedSeats', {
-                params: { room, date: selectedDate, start_time: `${selectedHour}:00`, end_time: `${endTime}:00` }
+                params: {
+                    room,
+                    date: selectedDate,
+                    start_time: `${OPEN_HOUR.toString().padStart(2, '0')}:00`,
+                    end_time: `${CLOSE_HOUR.toString().padStart(2, '0')}:00`
+                }
             });
+
+            console.log('Fetched Booked Seats:', response.data);
+
             const booked = {};
+            const userStart = parseInt(selectedHour, 10);
+            const userEnd = parseInt(endTime, 10);
+
             response.data.forEach(item => {
-                booked[item.seat_number] = item.status;
+                let itemStartHour = 0;
+                let itemEndHour = 24;
+                if (item.start_time) itemStartHour = parseInt(item.start_time.split(':')[0], 10);
+                if (item.end_time) itemEndHour = parseInt(item.end_time.split(':')[0], 10);
+
+                const isOverlapping = (itemStartHour < userEnd) && (itemEndHour > userStart);
+                if (isOverlapping) {
+                    booked[item.seat_number] = parseInt(item.status, 10);
+                }
             });
             setBookedSeats(booked);
         } catch (error) {
@@ -177,92 +194,81 @@ const Seat = () => {
     }, [selectedDate, selectedHour, endTime, getRoomIdentifier]);
 
     const toggleSeat = (seatNumber) => {
-        if (bookedSeats[seatNumber]) return;
+        if (bookedSeats[seatNumber] !== undefined) return;
+
         setSelectedSeats(prev =>
             prev.includes(seatNumber) ? prev.filter(num => num !== seatNumber) : [...prev, seatNumber]
         );
     };
 
-    // ==================== handleBooking 函数已重写 ====================
-// ==================== 这是最终确认版的 handleBooking 函数 ====================
-const handleBooking = async () => {
-    if (selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier()) {
-        return;
-    }
+    const handleBooking = async () => {
+        if (selectedSeats.length === 0 || !selectedDate || !selectedHour || !getRoomIdentifier()) {
+            return;
+        }
 
-    const start_time = `${selectedHour}:00`;
-    const end_time = `${endTime}:00`;
-    const room = getRoomIdentifier();
-    const bookingStatus = userInfo.role === 'admin' ? 4 : 0;
+        const start_time = `${selectedHour}:00`;
+        const end_time = `${endTime}:00`;
+        const room = getRoomIdentifier();
+        const bookingStatus = userInfo.role === 'admin' ? 4 : 0;
 
-    const successfulBookings = [];
-    setLoading(true);
+        const successfulBookings = [];
+        setLoading(true);
 
-    try {
-        for (const seat_number of selectedSeats) {
-            // 第1步：创建预订记录
-            const bookingResponse = await axios.post('/api/bookings', {
-                book_id: userInfo.id,
-                book_name: userInfo.name,
-                room,
-                seat_number,
-                date: selectedDate,
-                start_time,
-                end_time,
-                status: bookingStatus,
-                book_purpose: bookPurpose
-            });
-
-            // 根据你的 Postman 响应，直接从返回的数据中获取 id
-            const newBookingId = bookingResponse.data.id;
-
-            if (newBookingId) {
-                // 第2步：为新的预订生成二维码
-                const qrCodeResponse = await axios.post('/api/bookings/generate-qrcode', {
-                    bookingId: newBookingId
+        try {
+            for (const seat_number of selectedSeats) {
+                const bookingResponse = await axios.post('/api/bookings', {
+                    book_id: userInfo.id,
+                    book_name: userInfo.name,
+                    room,
+                    seat_number,
+                    date: selectedDate,
+                    start_time,
+                    end_time,
+                    status: bookingStatus,
+                    book_purpose: bookPurpose
                 });
 
-                successfulBookings.push({
-                    seat_number: seat_number,
-                    qrcode: qrCodeResponse.data.qrcode
+                const newBookingId = bookingResponse.data.id;
+
+                if (newBookingId) {
+                    const qrCodeResponse = await axios.post('/api/bookings/generate-qrcode', {
+                        bookingId: newBookingId
+                    });
+
+                    successfulBookings.push({
+                        seat_number: seat_number,
+                        qrcode: qrCodeResponse.data.qrcode
+                    });
+                } else {
+                    console.error('Could not find booking ID in the response for seat:', seat_number, bookingResponse.data);
+                }
+            }
+
+            if (successfulBookings.length > 0) {
+                navigate('/booking-success', { state: { bookings: successfulBookings } });
+            } else {
+                alert('Booking process completed, but no seats were successfully booked. Please check the console for errors.');
+            }
+
+        } catch (error) {
+            console.error('Booking error:', error);
+            const errorMessage = error.response?.data?.message || 'An unknown error occurred during booking.';
+
+            if (successfulBookings.length > 0) {
+                alert(`An error occurred: ${errorMessage}\n\nSome seats (${successfulBookings.length}/${selectedSeats.length}) were booked successfully.`);
+                navigate('/booking-success', {
+                    state: {
+                        bookings: successfulBookings,
+                        error: `Some bookings may have failed. Please verify.`
+                    }
                 });
             } else {
-                // 如果因为某种原因没有在响应中找到 ID
-                console.error('Could not find booking ID in the response for seat:', seat_number, bookingResponse.data);
+                alert(`Booking failed: ${errorMessage}`);
             }
+        } finally {
+            setLoading(false);
         }
-
-        // 如果至少有一个预订成功，则跳转到成功页面
-        if (successfulBookings.length > 0) {
-            navigate('/booking-success', { state: { bookings: successfulBookings } });
-        } else {
-            // 如果所有预订都因某种原因失败（例如API没有返回ID）
-            alert('Booking process completed, but no seats were successfully booked. Please check the console for errors.');
-        }
-
-    } catch (error) {
-        console.error('Booking error:', error);
-        // 优先显示后端返回的明确错误信息
-        const errorMessage = error.response?.data?.message || 'An unknown error occurred during booking.';
-
-        // 如果在循环中发生错误，部分座位可能已经预订成功
-        if (successfulBookings.length > 0) {
-            alert(`An error occurred: ${errorMessage}\n\nSome seats (${successfulBookings.length}/${selectedSeats.length}) were booked successfully.`);
-            // 即使出错了，也跳转页面以显示已成功的二维码
-            navigate('/booking-success', {
-                state: {
-                    bookings: successfulBookings,
-                    error: `Some bookings may have failed. Please verify.`
-                }
-            });
-        } else {
-            // 如果没有任何座位预订成功就出错了
-            alert(`Booking failed: ${errorMessage}`);
-        }
-    } finally {
-        setLoading(false);
-    }
-};
+    };
 
     const getSeatClassName = (seatNum) => {
         const status = bookedSeats[seatNum];
@@ -338,8 +344,6 @@ const handleBooking = async () => {
         }
     };
 
-    // ... 此处省略所有 render... 函数 (renderCanteenSeats, renderLibrarySeats etc.) ...
-    // ... 它们保持不变，无需修改 ...
     const renderCanteenSeats = () => {
         const isMobile = window.innerWidth < 768;
         const columns = isMobile ? 3 : 3;
@@ -349,6 +353,19 @@ const handleBooking = async () => {
         const seatMargin = isMobile ? 3 : 8;
         return (
             <div className="canteen-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
+                <div className="door" style={{ bottom: '10px', left: '160px', transform: 'translateY(100%)' }}>🚪 Door</div>
+                <div className="door" style={{ bottom: '10px', right: '160px', transform: 'translateY(100%)' }}>🚪 Door</div>
+                <div className="window vertical-window" style={{ top: '80px', left: '20px', height: '100px' }}>🪟</div>
+                <div className="window vertical-window" style={{ bottom: '140px', left: '20px', height: '100px' }}>🪟</div>
+                <div className="window vertical-window" style={{ top: '80px', right: '20px', height: '100px' }}>🪟</div>
+                <div className="window vertical-window" style={{ bottom: '140px', right: '20px', height: '100px' }}>🪟</div>
+
+                {/* Chargers for Canteen - Near windows/walls */}
+                <div className="charger" style={{ top: '150px', left: '10px' }}></div>
+                <div className="charger" style={{ bottom: '200px', left: '10px' }}></div>
+                <div className="charger" style={{ top: '150px', right: '10px' }}></div>
+                <div className="charger" style={{ bottom: '200px', right: '10px' }}></div>
+
                 {[...Array(columns)].map((_, colIndex) => (
                     <div key={`col-${colIndex + 1}`} className="canteen-column">
                         {[...Array(tablesPerColumn)].map((_, tableIndex) => (
@@ -392,6 +409,19 @@ const handleBooking = async () => {
         const seatMargin = isMobile ? 3 : 8;
         return (
             <div className="library-layout" style={{ width: '100%', minWidth: isMobile ? 'auto' : '900px' }}>
+                <div className="door" style={{ bottom: '30px', left: '40px' }}>🚪 Door</div>
+                <div className="window vertical-window" style={{ top: '80px', left: '20px', height: '100px' }}>🪟</div>
+                <div className="window vertical-window" style={{ bottom: '140px', left: '20px', height: '100px' }}>🪟</div>
+                <div className="window vertical-window" style={{ top: '80px', right: '20px', height: '100px' }}>🪟</div>
+                <div className="window vertical-window" style={{ bottom: '140px', right: '20px', height: '100px' }}>🪟</div>
+
+                {/* Chargers for Library - Near quiet study areas (walls) */}
+                <div className="charger" style={{ top: '100px', left: '10px' }}></div>
+                <div className="charger" style={{ bottom: '180px', left: '10px' }}></div>
+                <div className="charger" style={{ top: '100px', right: '10px' }}></div>
+                <div className="charger" style={{ bottom: '180px', right: '10px' }}></div>
+                <div className="charger" style={{ top: '10px', left: '50%', transform: 'translateX(-50%)' }}></div>
+
                 {[...Array(columns)].map((_, colIndex) => (
                     <div key={`col-${colIndex + 1}`} className="library-column">
                         {[...Array(tablesPerColumn)].map((_, tableIndex) => (
@@ -434,6 +464,18 @@ const handleBooking = async () => {
         const seatMargin = isMobile ? 3 : 8;
         return (
             <div className={`classroom-type1 ${is01To07 ? 'classroom-01-07' : ''}`} style={{ width: isMobile ? 'auto' : (is01To07 ? 1200 : 1000), minWidth: isMobile ? '600px' : 'auto' }}>
+                <div className="door" style={{ bottom: '30px', left: '40px' }}>🚪 Door</div>
+                <div className="window horizontal-window" style={{ top: '20px', left: '200px', width: '120px' }}>🪟</div>
+                <div className="window horizontal-window" style={{ top: '20px', right: '200px', width: '120px' }}>🪟</div>
+                <div className="window horizontal-window" style={{ bottom: '20px', left: '200px', width: '120px' }}>🪟</div>
+                <div className="window horizontal-window" style={{ bottom: '20px', right: '200px', width: '120px' }}>🪟</div>
+
+                {/* Chargers for Classroom Type 1 - Near side walls */}
+                <div className="charger" style={{ top: '50%', left: '10px', transform: 'translateY(-50%)' }}></div>
+                <div className="charger" style={{ top: '50%', right: '10px', transform: 'translateY(-50%)' }}></div>
+                <div className="charger" style={{ bottom: '20px', left: '350px' }}></div>
+                <div className="charger" style={{ bottom: '20px', right: '350px' }}></div>
+
                 <div className="left-wall-table table horizontal-table" style={{ width: isMobile ? 120 : 180 }}>
                     <div className="table-seats top-seats">
                         {[1, 2, 3].map(seatNum => (
@@ -531,6 +573,18 @@ const handleBooking = async () => {
         const seatMargin = isMobile ? 2 : 0;
         return (
             <div className="classroom-type2" style={{ width: isMobile ? 'auto' : 900, minWidth: isMobile ? '500px' : 'auto' }}>
+                <div className="door" style={{ bottom: '30px', left: '40px' }}>🚪 Door</div>
+                <div className="window horizontal-window" style={{ top: '20px', left: '200px', width: '120px' }}>🪟</div>
+                <div className="window horizontal-window" style={{ top: '20px', right: '200px', width: '120px' }}>🪟</div>
+                <div className="window horizontal-window" style={{ bottom: '20px', left: '200px', width: '120px' }}>🪟</div>
+                <div className="window horizontal-window" style={{ bottom: '20px', right: '200px', width: '120px' }}>🪟</div>
+
+                {/* Chargers for Classroom Type 2 - Lecture Hall side walls */}
+                <div className="charger" style={{ top: '200px', left: '10px' }}></div>
+                <div className="charger" style={{ bottom: '200px', left: '10px' }}></div>
+                <div className="charger" style={{ top: '200px', right: '10px' }}></div>
+                <div className="charger" style={{ bottom: '200px', right: '10px' }}></div>
+
                 <div className="staircase-area"></div>
                 <div className="classroom-type2-rows">
                     {[...Array(rows)].map((_, rowIndex) => {
@@ -627,8 +681,7 @@ const handleBooking = async () => {
             </button>
         </div>
     );
-    // ... 此处省略 return (...) JSX 部分 ...
-    // ... 它也保持不变，无需修改 ...
+
     return (
         <div>
             <style>
@@ -642,25 +695,8 @@ const handleBooking = async () => {
                 .seat { width: 30px; height: 30px; border-radius: 50%; background-color: #94a3b8; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; transition: all 0.2s ease; margin: 0 8px; position: relative; }
                 .seat.selected { background-color: #1e40af; }
                 .seat.booked { background-color: #ef4444; cursor: not-allowed; }
-
-                /* NEW: Style for 'Broken' seats booked by admin */
-                .seat.broken {
-                  background-color: #6b7280; /* Gray color */
-                  cursor: not-allowed;
-                  position: relative;
-                  color: white;
-                }
-                .seat.broken::after {
-                  content: '×'; /* Add a cross symbol */
-                  position: absolute;
-                  top: 50%;
-                  left: 50%;
-                  transform: translate(-50%, -50%);
-                  font-size: 24px;
-                  font-weight: bold;
-                  color: white;
-                }
-
+                .seat.broken { background-color: #6b7280; cursor: not-allowed; position: relative; color: white; }
+                .seat.broken::after { content: '×'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; font-weight: bold; color: white; }
                 .seat.recommended { border: 3px solid #10b981; animation: pulse 2s infinite; background-color: #dcfce7; color: #166534; }
                 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
                 .form-group { margin-bottom: 1.8rem; }
@@ -698,10 +734,10 @@ const handleBooking = async () => {
                 .bottom-seats { bottom: -40px; left: 0; right: 0; }
                 .left-seats { top: 0; bottom: 0; left: -50px; flex-direction: column; justify-content: center; gap: 15px; }
                 .right-seats { top: 0; bottom: 0; right: -50px; flex-direction: column; justify-content: center; gap: 15px; }
-                .canteen-layout { display: flex; width: 100%; justify-content: space-around; padding: 20px; }
+                .canteen-layout { position: relative; display: flex; width: 100%; justify-content: space-around; padding: 20px; min-height: 700px; }
                 .canteen-column { display: flex; flex-direction: column; align-items: center; gap: 40px; }
-                .library-layout { display: flex; width: 100%; justify-content: space-around; padding: 20px; }
-                .library-column { display: flex; flex-direction: column; align-items: center; gap: 40px; }
+                .library-layout { position: relative; display: flex; width: 100%; justify-content: space-around; padding: 20px; min-height: 650px; align-items: flex-start; }
+                .library-column { display: flex; flex-direction: column; align-items: center; gap: 40px; z-index: 1; }
                 .classroom-type1 { position: relative; width: 1000px; height: 700px; border: 1px solid #e2e8f0; padding: 60px; }
                 .classroom-01-07 { width: 1200px; }
                 .classroom-01-07 .left-wall-table { left: 0px; }
@@ -738,6 +774,20 @@ const handleBooking = async () => {
                 .plot-image-container { position: fixed; bottom: 20px; right: 20px; z-index: 1020; background-color: #fff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 5px 10px rgba(0,0,0,0.05); padding: 10px; transition: all 0.3s ease-in-out; }
                 .plot-image-container img { display: block; max-width: 400px; max-height: 300px; border-radius: 4px; }
                 .plot-close-button { position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; border-radius: 50%; border: none; background-color: #0f172a; color: white; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+                /* --- ADDED STYLES FOR DOORS, WINDOWS AND CHARGERS --- */
+                .door, .window { position: absolute; font-size: 1.1rem; font-weight: 600; color: #0f172a; background-color: #f1f5f9; border-radius: 6px; padding: 4px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+                .door { background-color: #fef3c7; border: 2px solid #f59e0b; }
+                .window { background-color: #e0f2fe; border: 2px solid #0ea5e9; }
+                .vertical-window { width: 16px; height: 100px; background-color: rgba(224, 242, 254, 0.85); border: 2px solid #0ea5e9; border-radius: 6px; position: absolute; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: inset 0 0 6px rgba(14, 165, 233, 0.4), 0 2px 6px rgba(0,0,0,0.1); }
+                .horizontal-window { height: 16px; background-color: rgba(224, 242, 254, 0.85); border: 2px solid #0ea5e9; border-radius: 6px; position: absolute; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: inset 0 0 6px rgba(14, 165, 233, 0.4), 0 2px 6px rgba(0,0,0,0.1); }
+
+                /* Charger (Power Outlet) Style */
+                .charger { position: absolute; font-size: 1.2rem; background-color: #fffbeb; border: 1px solid #f59e0b; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: help; }
+                .charger::after { content: '⚡'; color: #d97706; font-weight: bold; font-size: 14px; }
+                .charger:hover::before { content: 'Power Outlet'; position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 4px 8px; font-size: 10px; border-radius: 4px; white-space: nowrap; z-index: 10; pointer-events: none; }
+                /* --- END ADDED STYLES --- */
+
                 @media (max-width: 768px) {
                     .seat-container { flex-direction: column; margin-top: 20px; }
                     .seat-sidebar, .seat-main { width: 100%; padding: 1.5rem; }

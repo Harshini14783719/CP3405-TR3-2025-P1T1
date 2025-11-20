@@ -51,7 +51,7 @@ exports.getBookingById = async (req, res) => {
   }
 };
 
-// 创建预订（使用前端传入的 status，默认 1）
+// 创建预订
 exports.createbooking = async (req, res) => {
   let connection;
   try {
@@ -59,18 +59,24 @@ exports.createbooking = async (req, res) => {
 
     const { book_id, book_name, room, seat_number, date, start_time, end_time, status } = req.body;
 
-    // 默认 status = 1（例如：Booked），你也可以改成 0，看你业务约定
+    // 默认 status = 1（例如：Booked）
     const bookingStatus = (status !== undefined) ? status : 1;
 
     if (!book_id || !book_name || !room || seat_number === undefined || !date || !start_time || !end_time) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
+    // 🟢 优化：冲突检测改为“重叠检测”，防止不同时间段的重复预订
+    // 原逻辑: start_time = ? (只能防完全一样的开始时间)
+    // 新逻辑: 只要有时间重叠就算冲突
     const [conflicts] = await connection.execute(
       `SELECT * FROM bookings
        WHERE room = ? AND seat_number = ?
-         AND date = ? AND start_time = ?`,
-      [room, seat_number, date, start_time]
+         AND date = ?
+         AND start_time < ?
+         AND end_time > ?
+         AND status != 2`, // 忽略已取消的订单
+      [room, seat_number, date, end_time, start_time] // 注意参数顺序: end_time, start_time
     );
 
     if (conflicts.length > 0) {
@@ -142,22 +148,27 @@ exports.deletebooking = async (req, res) => {
   }
 };
 
-// 获取某一时间段某个房间的已预订座位
+// 🟢 重点修复：获取某一时间段某个房间的已预订座位
 exports.getBookedSeats = async (req, res) => {
   let connection;
   try {
     connection = await pool.getConnection();
     const { room, date, start_time, end_time } = req.query;
+
+    // 修复逻辑：使用时间段重叠查询 (Overlap)
+    // 只要 (现有订单开始时间 < 查询结束时间) 且 (现有订单结束时间 > 查询开始时间) 即视为占用
     const [results] = await connection.execute(
       `SELECT b.*, u.jcu_id
        FROM bookings b
        LEFT JOIN users u ON b.book_id = u.id
        WHERE room = ?
        AND date = ?
-       AND start_time = ?
-       AND end_time = ?`,
-      [room, date, start_time, end_time]
+       AND start_time < ?
+       AND end_time > ?
+       AND status != 2`, // 排除已取消(status 2)的订单
+      [room, date, end_time, start_time] // ⚠️ 参数顺序：先传查询的结束时间，再传开始时间
     );
+
     res.json(results);
   } catch (error) {
     console.error('Error fetching booked seats:', error);
